@@ -3019,15 +3019,26 @@
                     <div class="input-header">
                         <div>
                             <div class="judul-kecil">LAPORAN UANG MASUK HARIAN <span>MINYAK &amp; RUPA-RUPA</span></div>
-                            <div id="inputHarianSourceStatus" class="status-info"></div>
+                            <div id="inputHarianSourceStatus" class="status-info" style="display:none;"></div>
                         </div>
-                        <div class="tanggal-controls">
+                        <div class="tanggal-controls" style="display:flex;align-items:center;gap:8px;">
                             <label for="tanggalHarian">Tanggal</label>
                             <input type="date" id="tanggalHarian" value="2026-07-01">
-                            <button class="btn btn-outline btn-sm" id="btnMuatHarian"><i class="bi bi-cloud-download"></i> Muat</button>
-                            <button class="btn btn-outline btn-sm" id="btnSimpanHarian"><i class="bi bi-save"></i> Simpan</button>
-                            <button class="btn btn-outline btn-sm" id="btnResetHarian"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
                             <button class="btn btn-outline btn-sm" id="btnPrintHarian"><i class="bi bi-printer"></i> Cetak</button>
+                            <div class="action-inline" style="position: relative;">
+                                <button class="menu-toggle-btn" id="harianMenuBtn">⚙️ Menu <span style="font-size:8px;">▼</span></button>
+                                <div class="menu-dropdown" id="harianMenuDropdown">
+                                    <div class="menu-item">
+                                        <button class="btn btn-outline" id="btnMuatHarian" style="flex:1;margin:0;"><i class="bi bi-cloud-download"></i> Muat</button>
+                                    </div>
+                                    <div class="menu-item">
+                                        <button class="btn btn-outline" id="btnSimpanHarian" style="flex:1;margin:0;"><i class="bi bi-save"></i> Simpan</button>
+                                    </div>
+                                    <div class="menu-item">
+                                        <button class="btn btn-outline" id="btnResetHarian" style="flex:1;margin:0;"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -7116,6 +7127,28 @@
             document.getElementById('badgePembayaran').textContent = totalRows;
         }
 
+        // ================================================================
+        // AUTO-SAVE TAB PEMBAYARAN (Input Harian)
+        // Supaya perubahan TIDAK HILANG saat pindah tanggal atau refresh,
+        // perubahan disimpan otomatis (debounced) & di-flush sebelum
+        // pindah tanggal / menutup halaman.
+        // ================================================================
+        let inputHarianDirty = false;
+        const autoSimpanHarianDebounced = debounce(function() {
+            simpanDataHarian(true);
+        }, 1500);
+
+        function tandaiInputHarianBerubah() {
+            inputHarianDirty = true;
+            autoSimpanHarianDebounced();
+        }
+
+        async function flushSimpanHarianJikaBerubah() {
+            if (inputHarianDirty) {
+                await simpanDataHarian(true);
+            }
+        }
+
         function setupInputListeners() {
             document.querySelector('#piutangInputBody').addEventListener('input', function(e) {
                 const target = e.target;
@@ -7129,6 +7162,7 @@
                 } else if (target.classList.contains('kolom-sales')) {
                     rebuildGroupTotals('piutangInputBody');
                 }
+                tandaiInputHarianBerubah();
             });
 
             document.querySelector('#cashInputBody').addEventListener('input', function(e) {
@@ -7143,6 +7177,7 @@
                 } else if (target.classList.contains('kolom-sales')) {
                     rebuildGroupTotals('cashInputBody');
                 }
+                tandaiInputHarianBerubah();
             });
 
             document.querySelector('#piutangInputBody').addEventListener('click', function(e) {
@@ -7159,6 +7194,7 @@
                                 'piutangTotalRupaTransfer', 'piutangTotalGrand');
                             rebuildGroupTotals('piutangInputBody');
                             hitungRingkasan();
+                            tandaiInputHarianBerubah();
                         }
                     } else {
                         alert('Harus ada minimal 1 baris.');
@@ -7180,6 +7216,7 @@
                                 'cashTotalRupaTransfer', 'cashTotalGrand');
                             rebuildGroupTotals('cashInputBody');
                             hitungRingkasan();
+                            tandaiInputHarianBerubah();
                         }
                     } else {
                         alert('Harus ada minimal 1 baris.');
@@ -7216,6 +7253,7 @@
                 rebuildGroupTotals('cashInputBody');
             }
             hitungRingkasan();
+            tandaiInputHarianBerubah();
         }
 
         async function simpanDataHarian(silent) {
@@ -7271,6 +7309,7 @@
             });
 
             const key = 'inputHarian_' + tgl;
+            inputHarianDirty = false;
             // Cadangan lokal (jaring pengaman jika server/koneksi bermasalah)
             try {
                 localStorage.setItem(key, JSON.stringify(data));
@@ -7472,6 +7511,7 @@
         async function muatDataHarian() {
             const tgl = document.getElementById('tanggalHarian').value;
             if (!tgl) { alert('Pilih tanggal terlebih dahulu.'); return; }
+            inputHarianDirty = false;
 
             const key = 'inputHarian_' + tgl;
             let data;
@@ -7581,6 +7621,7 @@
         }
 
         function resetToDefaultHarian(tgl) {
+            inputHarianDirty = false;
             const piutangBody = document.getElementById('piutangInputBody');
             const cashBody = document.getElementById('cashInputBody');
             piutangBody.innerHTML = '';
@@ -7707,9 +7748,17 @@
             setupInputListeners();
             muatDataHarian();
 
-            document.getElementById('tanggalHarian').addEventListener('change', function() {
+            document.getElementById('tanggalHarian').addEventListener('change', async function() {
+                await flushSimpanHarianJikaBerubah();
                 muatDataHarian();
                 updateTglHarianFormatted();
+            });
+
+            window.addEventListener('beforeunload', function(e) {
+                if (inputHarianDirty) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
             });
         }
 
@@ -9173,6 +9222,7 @@
         setupMenuDropdown('salesMenuBtn', 'salesMenuDropdown');
         setupMenuDropdown('pemasukanMenuBtn', 'pemasukanMenuDropdown');
         setupMenuDropdown('ptMenuBtn', 'ptMenuDropdown');
+        setupMenuDropdown('harianMenuBtn', 'harianMenuDropdown');
 
         document.addEventListener('click', function() {
             document.querySelectorAll('.menu-dropdown.active').forEach(function(d) {
