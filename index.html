@@ -2704,6 +2704,13 @@
 
     <!-- ======= TAB 2 – DATA UANG MASUK ======= -->
     <div class="tab-content" id="tab2">
+        <div class="cards" id="pemasukanCards">
+            <div class="card"><span class="label">TOTAL CASH</span><span class="value" id="pemTotalCash">Rp 0</span></div>
+            <div class="card"><span class="label">TOTAL TRANSFER</span><span class="value" id="pemTotalTransfer">Rp 0</span></div>
+            <div class="card"><span class="label">UANG MASUK MINYAK</span><span class="value orange" id="pemTotalMinyak">Rp 0</span></div>
+            <div class="card"><span class="label">UANG MASUK RUPA RUPA</span><span class="value purple" id="pemTotalRupa">Rp 0</span></div>
+            <div class="card"><span class="label">GRAND TOTAL</span><span class="value" id="pemGrandTotal">Rp 0</span></div>
+        </div>
         <div class="toolbar">
             <div class="toolbar-left">
                 <span class="label-cari">CARI FAKTUR</span>
@@ -2747,13 +2754,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="cards" id="pemasukanCards">
-            <div class="card"><span class="label">TOTAL CASH</span><span class="value" id="pemTotalCash">Rp 0</span></div>
-            <div class="card"><span class="label">TOTAL TRANSFER</span><span class="value" id="pemTotalTransfer">Rp 0</span></div>
-            <div class="card"><span class="label">UANG MASUK MINYAK</span><span class="value orange" id="pemTotalMinyak">Rp 0</span></div>
-            <div class="card"><span class="label">UANG MASUK RUPA RUPA</span><span class="value purple" id="pemTotalRupa">Rp 0</span></div>
-            <div class="card"><span class="label">GRAND TOTAL</span><span class="value" id="pemGrandTotal">Rp 0</span></div>
         </div>
         <div class="table-wrap">
             <table>
@@ -2971,9 +2971,9 @@
                         <div class="tanggal-controls">
                             <label for="tanggalHarian">Tanggal</label>
                             <input type="date" id="tanggalHarian" value="2026-07-01">
-                            <button class="btn btn-orange btn-sm" id="btnMuatHarian"><i class="bi bi-cloud-download"></i> Muat</button>
-                            <button class="btn btn-success btn-sm" id="btnSimpanHarian"><i class="bi bi-save"></i> Simpan</button>
-                            <button class="btn btn-reset btn-sm" id="btnResetHarian"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                            <button class="btn btn-outline btn-sm" id="btnMuatHarian"><i class="bi bi-cloud-download"></i> Muat</button>
+                            <button class="btn btn-outline btn-sm" id="btnSimpanHarian"><i class="bi bi-save"></i> Simpan</button>
+                            <button class="btn btn-outline btn-sm" id="btnResetHarian"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
                             <button class="btn btn-outline btn-sm" id="btnPrintHarian"><i class="bi bi-printer"></i> Cetak</button>
                         </div>
                     </div>
@@ -3361,6 +3361,11 @@
 
     <!-- ======= TAB 9 – REKAP PROFIT ======= -->
     <div class="tab-content" id="tab9">
+        <div class="cards" id="rpCards">
+            <div class="card"><span class="label">Total Profit</span><span class="value green" id="rpTotalProfit">Rp 0</span></div>
+            <div class="card"><span class="label">Dari Cash Dropping</span><span class="value" id="rpTotalCash">Rp 0</span></div>
+            <div class="card"><span class="label">Dari Piutang Tempo</span><span class="value orange" id="rpTotalTempo">Rp 0</span></div>
+        </div>
         <div class="filter-bar">
             <div class="field"><label>Cari Faktur</label><input type="text" id="fFakturRP" placeholder="No Faktur..."></div>
             <div class="field"><label>Bulan Uang Masuk</label><select id="fBulanRP"><option value="">Semua</option></select></div>
@@ -3371,11 +3376,6 @@
                 <button class="btn btn-outline" id="btnRefreshRP">🔄 Refresh</button>
                 <button class="btn btn-outline" id="btnExportRP">📥 Export CSV</button>
             </div>
-        </div>
-        <div class="cards" id="rpCards">
-            <div class="card"><span class="label">Total Profit</span><span class="value green" id="rpTotalProfit">Rp 0</span></div>
-            <div class="card"><span class="label">Dari Cash Dropping</span><span class="value" id="rpTotalCash">Rp 0</span></div>
-            <div class="card"><span class="label">Dari Piutang Tempo</span><span class="value orange" id="rpTotalTempo">Rp 0</span></div>
         </div>
         <div class="table-wrap">
             <table>
@@ -7562,10 +7562,10 @@
                 if (rect.width === 0 && rect.height === 0) return;
                 const tabContent = wrap.closest('.tab-content');
                 const pagination = tabContent ? tabContent.querySelector(':scope > .pagination') : null;
-                let reserve = 16;
+                let reserve = 6;
                 if (pagination) {
                     const pRect = pagination.getBoundingClientRect();
-                    if (pRect.height > 0) reserve += pRect.height + 8;
+                    if (pRect.height > 0) reserve += pRect.height + 4;
                 }
                 const isTwoCol = !!wrap.closest('.two-col');
                 const minH = isTwoCol ? 200 : 260;
@@ -7683,10 +7683,10 @@
             const rowsHtml = filteredIdx.map(i => {
                 const p = _produkHargaWorking[i];
                 return `<tr data-idx="${i}">
-                    <td><input type="text" class="ph-produk" value="${escapeHtml(p.produk || '')}" style="width:100%;min-width:150px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
-                    <td><input type="number" class="ph-hargabeli num" value="${p.hargaBeli !== undefined && p.hargaBeli !== '' ? p.hargaBeli : ''}" placeholder="-" style="width:100px;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
-                    <td><input type="number" class="ph-hargajual num" value="${p.hargaJual !== undefined && p.hargaJual !== '' ? p.hargaJual : ''}" placeholder="-" style="width:100px;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
-                    <td style="text-align:center;"><button type="button" class="btn-hapus-produk-harga" data-idx="${i}" style="color:#dc3545;background:none;border:none;font-size:16px;cursor:pointer;line-height:1;" title="Hapus produk ini">&times;</button></td>
+                    <td style="padding:4px 8px;"><input type="text" class="ph-produk" value="${escapeHtml(p.produk || '')}" style="width:100%;box-sizing:border-box;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td style="padding:4px 8px;"><input type="number" class="ph-hargabeli num" value="${p.hargaBeli !== undefined && p.hargaBeli !== '' ? p.hargaBeli : ''}" placeholder="-" style="width:100%;box-sizing:border-box;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td style="padding:4px 8px;"><input type="number" class="ph-hargajual num" value="${p.hargaJual !== undefined && p.hargaJual !== '' ? p.hargaJual : ''}" placeholder="-" style="width:100%;box-sizing:border-box;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td style="text-align:center;padding:4px 8px;"><button type="button" class="btn-hapus-produk-harga" data-idx="${i}" style="color:#dc3545;background:none;border:none;font-size:16px;cursor:pointer;line-height:1;" title="Hapus produk ini">&times;</button></td>
                 </tr>`;
             }).join('');
 
@@ -7698,13 +7698,19 @@
                     <button type="button" id="phBtnTambah" class="btn btn-outline" style="font-size:11px;padding:6px 14px;">+ Tambah Produk</button>
                 </div>
                 <div style="max-height:50vh;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;">
-                    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:auto;">
+                            <col style="width:140px;">
+                            <col style="width:140px;">
+                            <col style="width:40px;">
+                        </colgroup>
                         <thead>
                             <tr style="background:#e5e7eb;position:sticky;top:0;">
                                 <th style="text-align:left;padding:6px 8px;">Produk</th>
                                 <th style="text-align:right;padding:6px 8px;">Harga Beli</th>
                                 <th style="text-align:right;padding:6px 8px;">Harga Jual</th>
-                                <th style="width:40px;"></th>
+                                <th style="padding:6px 8px;"></th>
                             </tr>
                         </thead>
                         <tbody id="phTableBody">
