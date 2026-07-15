@@ -936,6 +936,48 @@
             padding: 2px 12px;
             height: 24px;
         }
+        .modal-box {
+            position: relative;
+        }
+        .stempel-lunas-modal {
+            position: absolute;
+            top: 54px;
+            right: 26px;
+            width: 108px;
+            height: 108px;
+            border: 4px solid #dc2626;
+            border-radius: 50%;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transform: rotate(-18deg);
+            opacity: 0.85;
+            pointer-events: none;
+            z-index: 5;
+            font-family: Arial, Helvetica, sans-serif;
+            box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.35);
+        }
+        .stempel-lunas-modal::before {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border: 1px solid #dc2626;
+            border-radius: 50%;
+        }
+        @media (max-width: 600px) {
+            .stempel-lunas-modal {
+                width: 84px;
+                height: 84px;
+                font-size: 15px;
+                top: 46px;
+                right: 14px;
+            }
+        }
         .faktur-link {
             color: var(--blue);
             cursor: pointer;
@@ -2829,6 +2871,14 @@
             <div class="action-inline">
                 <span class="data-baru-notif" id="ptDataBaruNotif" style="display:none;" title="Klik Muat Ulang untuk memperbarui tabel">🆕 Data baru masuk</span>
                 <button class="btn" id="ptBtnRefresh">🔄 Muat Ulang</button>
+                <div style="position: relative;">
+                    <button class="menu-toggle-btn" id="ptMenuBtn">⚙️ Menu <span style="font-size:8px;">▼</span></button>
+                    <div class="menu-dropdown" id="ptMenuDropdown">
+                        <div class="menu-item">
+                            <button class="btn" id="ptBtnInputManual" style="flex:1;margin:0;">✍️ Input Manual</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="table-wrap">
@@ -3393,6 +3443,7 @@
     <div class="modal-overlay" id="detailModalGlobal">
         <div class="modal-box">
             <div class="modal-head"><h2 id="detailModalTitleGlobal">🧾 Detail Faktur</h2><button class="modal-close" id="detailModalCloseGlobal">✕</button></div>
+            <div class="stempel-lunas-modal" id="detailModalStempelLunas" style="display:none;">LUNAS</div>
             <div class="modal-body" id="detailModalBodyGlobal"></div>
         </div>
     </div>
@@ -3417,9 +3468,35 @@
         </div>
     </div>
     <div class="modal-overlay" id="ptDetailModal">
-        <div class="modal-box" style="max-width:520px;">
+        <div class="modal-box">
             <div class="modal-head"><h2 id="ptDetailTitle">🧾 Detail Faktur</h2><button class="modal-close" id="ptDetailClose">✕</button></div>
             <div class="modal-body" id="ptDetailBody" style="font-size:11px; line-height:1.9;"></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="ptInputManualModal">
+        <div class="modal-box">
+            <div class="modal-head"><h2>✍️ Input Manual - Piutang Lama</h2><button class="modal-close" id="ptInputManualClose">✕</button></div>
+            <div class="modal-body">
+                <div style="font-size:10.5px; color:#6b7280; margin-bottom:10px; line-height:1.6;">
+                    Untuk memasukkan data piutang lama secara langsung ke tabel <strong>Cek Piutang</strong> (data lama/lampau yang belum tercatat di Bank Data Penjualan).
+                </div>
+                <form id="ptInputManualForm">
+                    <div class="filter-bar" style="padding:0; background:transparent; border:none; box-shadow:none;">
+                        <div class="field" style="min-width:150px;"><label>Tgl Transaksi *</label><input type="date" id="pimTanggal" required=""></div>
+                        <div class="field" style="min-width:150px;"><label>No.Faktur *</label><input type="text" id="pimNoFaktur" placeholder="No faktur..." required=""></div>
+                        <div class="field" style="min-width:170px;"><label>Customer *</label><input type="text" id="pimCustomer" placeholder="Nama toko/customer..." required=""></div>
+                        <div class="field" style="min-width:170px;"><label>Alamat</label><input type="text" id="pimAlamat" placeholder="Alamat..."></div>
+                        <div class="field" style="min-width:140px;"><label>Sales *</label><input type="text" id="pimSales" list="pimSalesList" placeholder="Nama sales..." required=""><datalist id="pimSalesList"></datalist></div>
+                        <div class="field" style="min-width:150px;"><label>Kategori *</label><select id="pimKategori" required=""><option value="fitri">Minyak Fitri</option><option value="rupa">Rupa Rupa</option></select></div>
+                        <div class="field" style="min-width:160px;"><label>Total Tagihan *</label><input type="number" id="pimTotal" min="0" step="1" placeholder="0" required=""></div>
+                        <div class="field" style="min-width:150px;"><label>Jatuh Tempo</label><input type="date" id="pimJatuhTempo"><span style="font-size:9px; color:#9ca3af;">Kosongkan jika ikut hitung default (14 hari)</span></div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px; border-top:1px solid #e5e9ef; padding-top:12px;">
+                        <button type="button" class="btn btn-reset" id="pimBtnBatal">Batal</button>
+                        <button type="submit" class="btn btn-success" id="pimBtnSimpan">💾 Simpan ke Cek Piutang</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -4755,6 +4832,7 @@
 
             document.getElementById('detailModalBodyGlobal').innerHTML = bodyHtml;
             document.getElementById('detailModalGlobal').classList.add('show');
+            setDetailModalStempelLunas(false);
         }
 
         document.addEventListener('click', function(e) {
@@ -5747,6 +5825,9 @@
                 } else {
                     cls = 'tercatat';
                 }
+                if (!jt && r.JatuhTempoManual) {
+                    jt = r.JatuhTempoManual;
+                }
                 if (!jt && r.Tanggal) {
                     const tglJual = ptParseISODate(r.Tanggal);
                     if (tglJual) {
@@ -6040,6 +6121,15 @@
         // Mengambil data produk/harga beli/harga jual/profit dari Bank Data
         // Penjualan (Tab 1) dan data pembayaran dari Data Uang Masuk (Tab 2).
         // ================================================================
+        // ================================================================
+        // STEMPEL "LUNAS" pada modal detail faktur (dipakai khusus di
+        // Cek Cash saat status pembayaran sudah cocok/lunas).
+        // ================================================================
+        function setDetailModalStempelLunas(show) {
+            const el = document.getElementById('detailModalStempelLunas');
+            if (el) el.style.display = show ? 'flex' : 'none';
+        }
+
         function cashShowDetailModal(d) {
             const noFaktur = (d['No.Faktur'] || '').toString().trim();
             if (!noFaktur) return;
@@ -6157,6 +6247,7 @@
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
+            setDetailModalStempelLunas(d._status === 'cocok');
             const saveBtn = document.getElementById('cashCatatanSaveBtn');
             if (saveBtn) {
                 saveBtn.addEventListener('click', async () => {
@@ -6298,6 +6389,76 @@
             await loadAllCashDataBeforePtRefresh();
             await ptRefresh(true);
             sembunyikanNotifDataBaru('piutang');
+        });
+        document.getElementById('ptBtnInputManual').addEventListener('click', function() {
+            document.getElementById('ptMenuDropdown').classList.remove('active');
+            bukaPtInputManualModal();
+        });
+
+        function bukaPtInputManualModal() {
+            document.getElementById('ptInputManualForm').reset();
+            const today = new Date().toISOString().slice(0, 10);
+            document.getElementById('pimTanggal').value = today;
+            document.getElementById('pimJatuhTempo').value = '';
+            const salesSet = new Set();
+            salesData.forEach(r => { if (r.Sales) salesSet.add(r.Sales); });
+            document.getElementById('pimSalesList').innerHTML = Array.from(salesSet).sort().map(s =>
+                `<option value="${s}"></option>`).join('');
+            document.getElementById('ptInputManualModal').classList.add('show');
+        }
+
+        function tutupPtInputManualModal() {
+            document.getElementById('ptInputManualModal').classList.remove('show');
+        }
+
+        document.getElementById('ptInputManualClose').addEventListener('click', tutupPtInputManualModal);
+        document.getElementById('pimBtnBatal').addEventListener('click', tutupPtInputManualModal);
+        document.getElementById('ptInputManualModal').addEventListener('click', function(e) {
+            if (e.target === this) tutupPtInputManualModal();
+        });
+
+        function isoToDMY(iso) {
+            if (!iso) return '';
+            const parts = String(iso).split('-');
+            if (parts.length !== 3) return '';
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
+
+        document.getElementById('ptInputManualForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const tanggal = document.getElementById('pimTanggal').value;
+            const noFaktur = document.getElementById('pimNoFaktur').value.trim();
+            const customer = document.getElementById('pimCustomer').value.trim();
+            const alamat = document.getElementById('pimAlamat').value.trim();
+            const sales = document.getElementById('pimSales').value.trim();
+            const kategori = document.getElementById('pimKategori').value;
+            const total = parseNumber(document.getElementById('pimTotal').value);
+            const jatuhTempoIso = document.getElementById('pimJatuhTempo').value;
+
+            if (!tanggal || !noFaktur || !customer || !sales || !total) {
+                showToast('⚠️ Lengkapi dulu kolom yang wajib diisi (*)', 'warning');
+                return;
+            }
+            const sudahAda = salesData.some(r => String(r['No.Faktur'] || '').trim().toLowerCase() === noFaktur
+                .toLowerCase());
+            if (sudahAda) {
+                if (!confirm(`No.Faktur "${noFaktur}" sudah ada di data. Tetap simpan sebagai data baru?`)) return;
+            }
+            const produk = kategori === 'fitri' ? 'Minyak Fitri (Input Manual)' : 'Rupa Rupa (Input Manual)';
+            const row = {
+                'Tanggal': tanggal, 'No.Faktur': noFaktur, 'Produk': produk, 'Jumlah': 1, 'Satuan': '',
+                'Harga Jual': total, 'Disc': 0, 'Total': total, 'Sales': sales, 'Customer': customer,
+                'Alamat': alamat, 'Pembayaran': 'Tempo', 'Harga Beli': '', 'Profit': ''
+            };
+            if (jatuhTempoIso) row.JatuhTempoManual = isoToDMY(jatuhTempoIso);
+            salesData.push(row);
+            const okSave = await saveSalesData();
+            if (typeof rebuildSalesFilterOptions === 'function') rebuildSalesFilterOptions();
+            ptRebuildFilterOptions();
+            ptPage = 1;
+            ptRenderTempoTable();
+            tutupPtInputManualModal();
+            if (okSave) showToast('✅ Data piutang lama berhasil ditambahkan ke Cek Piutang.', 'success');
         });
         document.getElementById('ptDataBaruNotif').addEventListener('click', function() {
             document.getElementById('ptBtnRefresh').click();
@@ -7839,6 +8000,7 @@
             document.getElementById('detailModalTitleGlobal').textContent = '📦 Master Produk & Harga';
             renderModalProdukHarga();
             document.getElementById('detailModalGlobal').classList.add('show');
+            setDetailModalStempelLunas(false);
             // 🔗 Kalau master masih kosong sama sekali, otomatis coba isi dari
             // Bank Data Penjualan supaya user tidak mulai dari nol.
             if (_produkHargaWorking.length === 0 && salesData && salesData.length) {
@@ -8391,6 +8553,7 @@
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
+            setDetailModalStempelLunas(false);
             tab1BindEditFakturModalEvents();
         }
 
@@ -8769,6 +8932,7 @@
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
+            setDetailModalStempelLunas(false);
         }
         document.addEventListener('click', function(e) {
             const target = e.target.closest('.rp-faktur-link');
@@ -8970,6 +9134,7 @@
 
         setupMenuDropdown('salesMenuBtn', 'salesMenuDropdown');
         setupMenuDropdown('pemasukanMenuBtn', 'pemasukanMenuDropdown');
+        setupMenuDropdown('ptMenuBtn', 'ptMenuDropdown');
 
         document.addEventListener('click', function() {
             document.querySelectorAll('.menu-dropdown.active').forEach(function(d) {
