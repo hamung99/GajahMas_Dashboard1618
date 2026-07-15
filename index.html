@@ -1916,6 +1916,21 @@
             font-size: .75rem;
             border-collapse: collapse;
         }
+        #tab7 .ringkasan table thead th {
+            border: 1px solid #a0a0a0;
+            padding: 3px 8px;
+            font-size: .68rem;
+            font-weight: 700;
+            text-align: center;
+            background: #FBE0CE;
+            white-space: nowrap;
+        }
+        #tab7 .ringkasan table thead th.ringkasan-th-minyak {
+            background: #FFF2CC;
+        }
+        #tab7 .ringkasan table thead th.ringkasan-th-rupa {
+            background: #DCE6F1;
+        }
         #tab7 .ringkasan table td {
             padding: 2px 8px;
             border: 1px solid #a0a0a0;
@@ -3050,6 +3065,20 @@
                     <!-- RINGKASAN -->
                     <div class="ringkasan mt-3">
                         <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" style="min-width:170px;"></th>
+                                    <th colspan="2" class="ringkasan-th-minyak">MINYAK</th>
+                                    <th colspan="2" class="ringkasan-th-rupa">RUPA-RUPA</th>
+                                    <th rowspan="2">TOTAL</th>
+                                </tr>
+                                <tr>
+                                    <th class="ringkasan-th-minyak">CASH</th>
+                                    <th class="ringkasan-th-minyak">TRANSFER</th>
+                                    <th class="ringkasan-th-rupa">CASH</th>
+                                    <th class="ringkasan-th-rupa">TRANSFER</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <tr>
                                     <td style="font-weight:700;">UANG MASUK DARI PIUTANG</td>
@@ -3078,8 +3107,15 @@
                                 <tr>
                                     <td colspan="2" style="font-weight:700;">TOTAL CASH</td>
                                     <td><input type="text" class="form-control form-control-sm" id="ringkasanTotalCash" readonly="" style="font-weight:700;"></td>
+                                    <td colspan="2"></td>
+                                    <td rowspan="2" style="font-weight:700;text-align:center;vertical-align:middle;">
+                                        <input type="text" class="form-control form-control-sm" id="ringkasanGrandTotal" readonly="" style="font-weight:700;">
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td colspan="2" style="font-weight:700;">TOTAL TRANSFER</td>
                                     <td><input type="text" class="form-control form-control-sm" id="ringkasanTotalTransfer" readonly="" style="font-weight:700;"></td>
+                                    <td colspan="2"></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -4707,7 +4743,7 @@
             
             const result = salesData.filter(r => {
                 // FILTER PRODUK: berlaku di semua mode (search faktur maupun normal)
-                if (produk && !(r.Produk || '').toLowerCase().includes(produk)) return false;
+                if (produk && !((r.Produk || '').trim().toLowerCase().startsWith(produk))) return false;
 
                 // SEARCH FILTER: Bypass period filter (tanggal & bulan) jika ada search
                 if (faktur) {
@@ -6574,6 +6610,8 @@
             const totalTransfer = tMT + tRT;
             document.getElementById('ringkasanTotalCash').value = formatAngka(totalCash);
             document.getElementById('ringkasanTotalTransfer').value = formatAngka(totalTransfer);
+            const grandTotalEl = document.getElementById('ringkasanGrandTotal');
+            if (grandTotalEl) grandTotalEl.value = formatAngka(totalCash + totalTransfer);
 
             const totalRows = document.querySelectorAll('#piutangInputBody tr:not(.group-subtotal):not(.row-spacer)').length +
                 document.querySelectorAll('#cashInputBody tr:not(.group-subtotal):not(.row-spacer)').length;
@@ -6765,8 +6803,12 @@
                     const inputs = tr.querySelectorAll('input');
                     if (inputs.length < 12) return;
                     const noFaktur = inputs[1].value.trim();
-                    const bayarCash = parseAngka(inputs[7].value) + parseAngka(inputs[9].value);
-                    const bayarTransfer = parseAngka(inputs[8].value) + parseAngka(inputs[10].value);
+                    const minyakCash = parseAngka(inputs[7].value);
+                    const minyakTransfer = parseAngka(inputs[8].value);
+                    const rupaCash = parseAngka(inputs[9].value);
+                    const rupaTransfer = parseAngka(inputs[10].value);
+                    const bayarCash = minyakCash + rupaCash;
+                    const bayarTransfer = minyakTransfer + rupaTransfer;
                     if (!noFaktur && bayarCash === 0 && bayarTransfer === 0) return;
                     list.push({
                         no: idx + 1,
@@ -6777,6 +6819,14 @@
                         tglFaktur: inputs[4].value,
                         jt: inputs[5].value,
                         tagihan: parseAngka(inputs[6].value),
+                        // PENTING: simpan split Minyak/Rupa-Rupa terpisah (bukan cuma
+                        // digabung ke bayarCash/bayarTransfer), supaya kalau Data Uang
+                        // Masuk ini ditarik ulang ke tab Pembayaran nanti, split-nya
+                        // tidak hilang/ketimpa jadi tergabung semua ke kolom Minyak.
+                        minyakCash,
+                        minyakTransfer,
+                        rupaCash,
+                        rupaTransfer,
                         bayarCash,
                         bayarTransfer,
                         totalBayar: bayarCash + bayarTransfer,
