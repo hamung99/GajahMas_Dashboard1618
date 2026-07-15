@@ -2902,10 +2902,11 @@
                         <tr style="background:#f8fafc; position:sticky; top:0;">
                             <th style="text-align:left;padding:6px 10px;width:150px;border-bottom:1px solid #e5e9ef;">Waktu Klik Cetak</th>
                             <th style="text-align:left;padding:6px 10px;border-bottom:1px solid #e5e9ef;">Ringkasan</th>
+                            <th style="text-align:center;padding:6px 10px;width:110px;border-bottom:1px solid #e5e9ef;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="tagihanRiwayatCetakBody">
-                        <tr><td colspan="2" style="text-align:center;padding:10px;color:#94a3b8;">Belum ada riwayat cetak.</td></tr>
+                        <tr><td colspan="3" style="text-align:center;padding:10px;color:#94a3b8;">Belum ada riwayat cetak.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -3233,10 +3234,11 @@
                                     <th style="width:150px;">Waktu Klik Cetak</th>
                                     <th style="width:170px;">Jenis Cetak</th>
                                     <th>Ringkasan</th>
+                                    <th style="width:110px;text-align:center;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="riwayatCetakTableBody">
-                                <tr><td colspan="3" class="empty-msg">🖨️ Belum ada riwayat cetak.</td></tr>
+                                <tr><td colspan="4" class="empty-msg">🖨️ Belum ada riwayat cetak.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -4414,14 +4416,19 @@
         // RIWAYAT CETAK — log SETIAP KALI tombol cetak diklik (bukan cuma
         // menyimpan tanggal terakhir). Setiap klik menambah 1 baris baru
         // ke db.printHistory, lengkap dengan waktu klik, jenis cetakan,
-        // dan ringkasan isinya, supaya histori lengkap bisa ditelusuri.
+        // ringkasan singkat, DAN detail lengkap (itemsJson) supaya semua
+        // faktur/data yang dicetak pada momen itu bisa dibuka & dilihat
+        // utuh lagi kapan saja — penting karena menyangkut uang.
         // ================================================================
-        async function catatRiwayatCetak(jenis, detail) {
+        let _riwayatCetakRowsCache = [];
+
+        async function catatRiwayatCetak(jenis, detail, itemsDetail) {
             try {
                 await db.printHistory.add({
                     waktu: new Date().toISOString(),
                     jenis: jenis || '-',
-                    detail: detail || ''
+                    detail: detail || '',
+                    itemsJson: itemsDetail ? JSON.stringify(itemsDetail) : ''
                 });
             } catch (e) {
                 console.warn('Gagal mencatat riwayat cetak:', e);
@@ -4447,10 +4454,16 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
+        function tombolLihatDetailRiwayatCetak(r) {
+            if (!r.itemsJson) return '';
+            return `<button type="button" class="btn-lihat-riwayat-cetak" data-id="${r.id}" style="font-size:10px;padding:3px 10px;border:1px solid #1f4e78;background:#eaf1fa;color:#1f4e78;border-radius:4px;cursor:pointer;white-space:nowrap;">🔍 Lihat Detail</button>`;
+        }
+
         async function renderRiwayatCetak() {
             let rows = [];
             try { rows = await db.printHistory.toArray(); } catch (e) { rows = []; }
             rows = (rows || []).slice().sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
+            _riwayatCetakRowsCache = rows;
 
             // --- Tabel lengkap di Tab 8 (Trash & Save) — semua jenis cetakan ---
             const tbody = document.getElementById('riwayatCetakTableBody');
@@ -4458,13 +4471,14 @@
             if (countEl) countEl.textContent = rows.length + ' log';
             if (tbody) {
                 if (!rows.length) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">🖨️ Belum ada riwayat cetak.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">🖨️ Belum ada riwayat cetak.</td></tr>';
                 } else {
                     tbody.innerHTML = rows.map(r => `
                         <tr>
                             <td>${fmtWaktuRiwayatCetak(r.waktu)}</td>
                             <td>${escHtmlRiwayatCetak(r.jenis)}</td>
                             <td>${escHtmlRiwayatCetak(r.detail)}</td>
+                            <td class="text-center">${tombolLihatDetailRiwayatCetak(r)}</td>
                         </tr>
                     `).join('');
                 }
@@ -4477,17 +4491,127 @@
                 const rowsTagihan = rows.filter(r => r.jenis === 'Cetak Tagihan');
                 if (tgCountEl) tgCountEl.textContent = rowsTagihan.length + ' log';
                 if (!rowsTagihan.length) {
-                    tgBody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:10px;color:#94a3b8;">Belum ada riwayat cetak.</td></tr>';
+                    tgBody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:10px;color:#94a3b8;">Belum ada riwayat cetak.</td></tr>';
                 } else {
                     tgBody.innerHTML = rowsTagihan.map(r => `
                         <tr>
                             <td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${fmtWaktuRiwayatCetak(r.waktu)}</td>
                             <td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;">${escHtmlRiwayatCetak(r.detail)}</td>
+                            <td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;text-align:center;white-space:nowrap;">${tombolLihatDetailRiwayatCetak(r)}</td>
                         </tr>
                     `).join('');
                 }
             }
         }
+
+        function cariRiwayatCetakById(id) {
+            return _riwayatCetakRowsCache.find(r => String(r.id) === String(id));
+        }
+
+        function bukaDetailRiwayatCetak(id) {
+            const r = cariRiwayatCetakById(id);
+            if (!r || !r.itemsJson) { showToast('Detail lengkap tidak tersedia untuk log ini.', 'warning'); return; }
+            let payload;
+            try { payload = JSON.parse(r.itemsJson); } catch (e) { showToast('Gagal membaca detail riwayat cetak.', 'warning'); return; }
+
+            document.getElementById('detailModalTitleGlobal').textContent =
+                `🖨️ Detail Cetak — ${r.jenis || ''} — ${fmtWaktuRiwayatCetak(r.waktu)}`;
+
+            let bodyHtml = `<div style="font-size:11px;color:#6b7280;margin-bottom:8px;">${escHtmlRiwayatCetak(r.detail)}</div>`;
+
+            if (r.jenis === 'Cetak Tagihan' && Array.isArray(payload.items)) {
+                bodyHtml += `<div style="font-size:11px;margin-bottom:6px;"><strong>Tanggal Cetak:</strong> ${escHtmlRiwayatCetak(payload.tanggalCetak)}${payload.catatan ? ' &nbsp;|&nbsp; <strong>Catatan:</strong> ' + escHtmlRiwayatCetak(payload.catatan) : ''}</div>`;
+                bodyHtml += `<div style="overflow:auto;max-height:60vh;">
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                        <thead>
+                            <tr style="background:#e5e7eb;">
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">NO FAKTUR</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">NAMA OUTLET</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">ALAMAT</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">SALES</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">PRODUK</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">TGL NOTA</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">TGL TEMPO</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:right;">TAGIHAN</th>
+                                <th style="padding:5px 8px;border:1px solid #cbd5e1;text-align:left;">TIPE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${payload.items.map(it => `
+                                <tr>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.noFaktur)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.customer)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.alamat)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.sales)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.produk)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.tanggal)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.jt)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.total)}</td>
+                                    <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.tipe)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:#f1f3f4;font-weight:700;">
+                                <td colspan="7" style="padding:5px 8px;border:1px solid #cbd5e1;text-align:right;">TOTAL</td>
+                                <td style="padding:5px 8px;border:1px solid #cbd5e1;text-align:right;">${fmtRp(payload.items.reduce((s,it)=>s+(parseNumber(it.total)||0),0))}</td>
+                                <td style="padding:5px 8px;border:1px solid #cbd5e1;"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>`;
+            } else if (Array.isArray(payload.piutang) || Array.isArray(payload.cash)) {
+                const renderList = (label, list, kolomNominal) => {
+                    if (!list || !list.length) return '';
+                    return `<div style="font-weight:700;font-size:11px;margin:10px 0 4px;">${label}</div>
+                        <div style="overflow:auto;max-height:35vh;">
+                        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                            <thead>
+                                <tr style="background:#e5e7eb;">
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:left;">SALES</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:left;">NO FAKTUR</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:left;">NAMA TOKO</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:right;">${kolomNominal}</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:right;">MINYAK CASH</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:right;">MINYAK TRANSFER</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:right;">RUPA CASH</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:right;">RUPA TRANSFER</th>
+                                    <th style="padding:4px 8px;border:1px solid #cbd5e1;text-align:left;">KET</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${list.map(it => `
+                                    <tr>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.sales)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.noFaktur)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.namaToko)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.tagihan)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.minyakCash)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.minyakTransfer)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.rupaCash)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">${fmtRp(it.rupaTransfer)}</td>
+                                        <td style="padding:4px 8px;border:1px solid #e2e8f0;">${escHtmlRiwayatCetak(it.ket)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        </div>`;
+                };
+                bodyHtml += `<div style="font-size:11px;margin-bottom:6px;"><strong>Tanggal Harian:</strong> ${escHtmlRiwayatCetak(payload.tanggal)}</div>`;
+                bodyHtml += renderList('PIUTANG TEMPO', payload.piutang, 'TAGIHAN');
+                bodyHtml += renderList('CASH DROPPING', payload.cash, 'NOMINAL FAKTUR');
+            } else {
+                bodyHtml += '<div style="font-size:11px;color:#94a3b8;">Tidak ada detail baris untuk log ini.</div>';
+            }
+
+            document.getElementById('detailModalBodyGlobal').innerHTML = bodyHtml;
+            document.getElementById('detailModalGlobal').classList.add('show');
+        }
+
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-lihat-riwayat-cetak');
+            if (btn) bukaDetailRiwayatCetak(btn.dataset.id);
+        });
 
         async function simpanTglCetakTagihan(noFaktur, tanggalCetak) {
             if (!noFaktur) return;
@@ -6296,13 +6420,31 @@
             document.getElementById('tgBtnTutupCetakSingle').addEventListener('click', bersihkanTampilanCetak);
 
             // Catat ke Riwayat Cetak: setiap klik dicatat sebagai baris baru
-            // (tidak menimpa/menggantikan catatan sebelumnya).
+            // (tidak menimpa/menggantikan catatan sebelumnya), LENGKAP dengan
+            // detail semua faktur yang dicetak supaya bisa dibuka utuh lagi
+            // kapan saja (penting karena menyangkut uang).
             const jumlahFaktur = selectedRows.length;
             const namaSales = Object.keys(groups).join(', ');
             const totalSemua = selectedRows.reduce((sum, r) => sum + parseNumber(r.total), 0);
+            const itemsDetailTagihan = {
+                tanggalCetak: tanggalCetak,
+                catatan: catatan,
+                items: selectedRows.map(r => ({
+                    noFaktur: r.noFaktur || '',
+                    customer: r.customer || '',
+                    alamat: r.alamat || '',
+                    sales: r.sales || '',
+                    produk: r.produk || r.produkNama || '',
+                    tanggal: fmtTanggal(r.tanggal),
+                    jt: r.jt || '-',
+                    total: parseNumber(r.total),
+                    tipe: r.tipe || ''
+                }))
+            };
             catatRiwayatCetak(
                 'Cetak Tagihan',
-                `${jumlahFaktur} faktur — Sales: ${namaSales} — Tgl Cetak: ${tanggalCetak} — Total: ${fmtRp(totalSemua)}`
+                `${jumlahFaktur} faktur — Sales: ${namaSales} — Tgl Cetak: ${tanggalCetak} — Total: ${fmtRp(totalSemua)}`,
+                itemsDetailTagihan
             );
 
             window.print();
@@ -7072,6 +7214,35 @@
             }
         }
 
+        // Baca semua baris dari tabel Piutang Tempo / Cash Dropping di tab
+        // Pembayaran, LENGKAP dengan split Minyak/Rupa-Rupa — dipakai untuk
+        // menyimpan detail utuh ke Riwayat Cetak (bukan cuma ringkasan teks).
+        function bacaBarisHarianUntukRiwayat(tbodyId) {
+            const list = [];
+            document.querySelectorAll(`#${tbodyId} tr:not(.group-subtotal):not(.row-spacer)`).forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                if (inputs.length < 12) return;
+                const noFaktur = inputs[1].value.trim();
+                const minyakCash = parseAngka(inputs[7].value);
+                const minyakTransfer = parseAngka(inputs[8].value);
+                const rupaCash = parseAngka(inputs[9].value);
+                const rupaTransfer = parseAngka(inputs[10].value);
+                if (!noFaktur && !minyakCash && !minyakTransfer && !rupaCash && !rupaTransfer) return;
+                list.push({
+                    sales: inputs[0].value,
+                    noFaktur: noFaktur,
+                    namaToko: inputs[2].value,
+                    alamat: inputs[3].value,
+                    tglFaktur: inputs[4].value,
+                    jt: inputs[5].value,
+                    tagihan: parseAngka(inputs[6].value),
+                    minyakCash, minyakTransfer, rupaCash, rupaTransfer,
+                    ket: inputs[11].value
+                });
+            });
+            return list;
+        }
+
         function initInputHarian() {
             const today = new Date();
             const y = today.getFullYear();
@@ -7096,7 +7267,12 @@
 
             document.getElementById('btnPrintHarian').addEventListener('click', function() {
                 const tglHarian = document.getElementById('tanggalHarian').value || '-';
-                catatRiwayatCetak('Cetak Pembayaran/Input Harian', `Tanggal Harian: ${tglHarian}`);
+                const itemsDetailHarian = {
+                    tanggal: tglHarian,
+                    piutang: bacaBarisHarianUntukRiwayat('piutangInputBody'),
+                    cash: bacaBarisHarianUntukRiwayat('cashInputBody')
+                };
+                catatRiwayatCetak('Cetak Pembayaran/Input Harian', `Tanggal Harian: ${tglHarian}`, itemsDetailHarian);
                 window.print();
             });
 
