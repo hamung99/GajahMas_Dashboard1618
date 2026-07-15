@@ -2568,6 +2568,16 @@
                 justify-content: center;
             }
         }
+
+        /* Teks peringatan "BISA RUBAH TRANSAKSI DISINI" di modal edit faktur
+           Tab 1 — kedip cepat supaya langsung menarik perhatian staf. */
+        @keyframes kedipCepat {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0.15; }
+        }
+        .teks-kedip-cepat {
+            animation: kedipCepat 0.6s steps(1, end) infinite;
+        }
     </style>
 </head>
 <body>
@@ -8185,12 +8195,12 @@
                 if (hargaBeli !== null) totalBeli += hargaBeli * jumlah;
                 if (profitBaris !== null) totalProfit += profitBaris;
                 return `<tr data-gidx="${gidx}" data-disc="${disc}">
-                        <td><input type="text" class="tab1e-produk" list="produkMasterDatalist" value="${escapeHtml(it.Produk || '')}" style="width:100%;min-width:110px;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
-                        <td><input type="number" class="tab1e-qty num" value="${jumlah || 0}" style="width:55px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
-                        <td><input type="number" class="tab1e-hargabeli num" value="${hargaBeli !== null ? hargaBeli : ''}" placeholder="-" style="width:80px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
-                        <td><input type="number" class="tab1e-hargajual num" value="${hargaJual || 0}" style="width:80px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
-                        <td class="num tab1e-total" style="font-weight:600;">${fmtRp(totalBaris)}</td>
-                        <td class="num tab1e-profit" style="color:${profitBaris !== null && profitBaris < 0 ? '#b91c1c' : '#15803d'};font-weight:700;">${profitBaris !== null ? fmtRp(profitBaris) : '-'}</td>
+                        <td style="padding:3px 4px;"><input type="text" class="tab1e-produk" list="produkMasterDatalist" value="${escapeHtml(it.Produk || '')}" style="width:100%;min-width:110px;box-sizing:border-box;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td class="num" style="padding:3px 4px;"><input type="number" class="tab1e-qty num" value="${jumlah || 0}" style="width:100%;box-sizing:border-box;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td class="num" style="padding:3px 4px;"><input type="number" class="tab1e-hargabeli num" value="${hargaBeli !== null ? hargaBeli : ''}" placeholder="-" style="width:100%;box-sizing:border-box;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td class="num" style="padding:3px 4px;"><input type="number" class="tab1e-hargajual num" value="${hargaJual || 0}" style="width:100%;box-sizing:border-box;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td class="num tab1e-total" style="font-weight:600;padding:3px 4px;">${fmtRp(totalBaris)}</td>
+                        <td class="num tab1e-profit" style="color:${profitBaris !== null && profitBaris < 0 ? '#b91c1c' : '#15803d'};font-weight:700;padding:3px 4px;">${profitBaris !== null ? fmtRp(profitBaris) : '-'}</td>
                     </tr>`;
             }).join('');
 
@@ -8216,13 +8226,21 @@
                             </div>
                         </div>
                         <div style="min-width:220px;max-width:360px;text-align:right;">
-                            <div style="font-size:13px;font-weight:800;color:#c2410c;line-height:1.4;">BISA RUBAH TRANSAKSI DISINI</div>
+                            <div class="teks-kedip-cepat" style="font-size:13px;font-weight:800;color:#c2410c;line-height:1.4;">BISA RUBAH TRANSAKSI DISINI</div>
                             <div style="font-size:10px;color:#6b7280;margin-top:2px;">( jika klik <strong>Transaksi Batal</strong>, data akan dipindah ke Trash dan tidak akan ikut dijumlahkan )</div>
                         </div>
                     </div>
                     <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
                     <div style="font-size:11px;font-weight:700;margin-bottom:4px;">📦 Rincian Item <span style="font-weight:400;color:#6b7280;">(bisa diedit — Produk, Qty, Harga Beli, Harga Jual. Total &amp; Profit otomatis terisi)</span></div>
-                    <table id="tab1EditFakturTable" style="width:100%; border-collapse:collapse; font-size:10.5px;">
+                    <table id="tab1EditFakturTable" style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:10.5px;">
+                        <colgroup>
+                            <col style="width:auto;">
+                            <col style="width:60px;">
+                            <col style="width:100px;">
+                            <col style="width:100px;">
+                            <col style="width:110px;">
+                            <col style="width:100px;">
+                        </colgroup>
                         <thead>
                             <tr style="border-bottom:1px solid var(--line);">
                                 <th style="text-align:left;padding:3px 4px;">Produk</th>
@@ -8497,6 +8515,15 @@
                     <div style="font-size:11px; line-height:1.8;">
                         <div><strong>💰 Profit versi Rekap Profit (dari Data Uang Masuk):</strong> ${fmtRp(item.profit)}</div>
                         ${Math.abs((item.profit||0) - totalProfit) > 0.5 ? `<div style="color:#b91c1c;">⚠️ Beda dengan total di atas (kemungkinan sebagian baris produk tidak ketemu di Bank Data Penjualan).</div>` : ''}
+                    </div>
+                    <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                        <div style="flex:1; min-width:180px; padding:8px 12px; background:var(--grey-bg); border:1px solid var(--line); border-radius:var(--radius); text-align:center;">
+                            <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">📊 Margin Rata-rata</div>
+                            <div style="font-size:16px; font-weight:700; color:var(--blue);">
+                                ${totalJual > 0 ? ((item.profit || 0) / totalJual * 100).toFixed(2) : '0.00'}%
+                            </div>
+                        </div>
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
