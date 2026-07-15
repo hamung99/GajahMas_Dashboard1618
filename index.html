@@ -7574,6 +7574,7 @@
             body.innerHTML = `
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
                     <input type="text" id="phSearchInput" placeholder="🔍 Cari produk..." value="${escapeHtml(_produkHargaSearchTerm)}" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;">
+                    <button type="button" id="phBtnAmbilBankData" class="btn btn-outline" style="font-size:11px;padding:6px 14px;border-color:#0d6efd;color:#0d6efd;" title="Isi daftar produk otomatis dari data yang sudah ada di Bank Data Penjualan">📥 Ambil dari Bank Data Penjualan</button>
                     <button type="button" id="phBtnTambah" class="btn btn-outline" style="font-size:11px;padding:6px 14px;">+ Tambah Produk</button>
                 </div>
                 <div style="max-height:50vh;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;">
@@ -7587,7 +7588,7 @@
                             </tr>
                         </thead>
                         <tbody id="phTableBody">
-                            ${rowsHtml || `<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8;">${term ? 'Tidak ada produk yang cocok.' : 'Belum ada produk. Klik "+ Tambah Produk" untuk mulai.'}</td></tr>`}
+                            ${rowsHtml || `<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8;">${term ? 'Tidak ada produk yang cocok.' : 'Belum ada produk. Klik "📥 Ambil dari Bank Data Penjualan" untuk isi otomatis, atau "+ Tambah Produk" untuk isi manual.'}</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -7611,6 +7612,7 @@
                 _produkHargaWorking.unshift({ produk: '', hargaBeli: '', hargaJual: '' });
                 renderModalProdukHarga();
             });
+            document.getElementById('phBtnAmbilBankData').addEventListener('click', ambilProdukDariBankDataKeMaster);
             document.getElementById('phBtnSimpan').addEventListener('click', simpanProdukHargaDariModal);
             body.querySelectorAll('.btn-hapus-produk-harga').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -7621,6 +7623,73 @@
                     renderModalProdukHarga();
                 });
             });
+        }
+
+        // ================================================================
+        // LINK: Ambil daftar produk unik + harga jual/beli dari Bank Data
+        // Penjualan (Tab 1) ke Master Produk & Harga (Tab 8), untuk "cek"
+        // kecocokan harga & melengkapi produk yang belum ada di master.
+        // ================================================================
+        function ambilProdukDariBankData() {
+            // Urutkan dari transaksi TERBARU ke terlama supaya harga yang
+            // dipakai adalah harga jual/beli paling baru per produk.
+            const sorted = salesData.slice().sort((a, b) => String(b.Tanggal || '').localeCompare(String(a
+                .Tanggal || '')));
+            const result = {};
+            sorted.forEach(r => {
+                const nama = String(r.Produk || '').trim();
+                if (!nama) return;
+                const key = nama.toLowerCase();
+                if (!result[key]) result[key] = { produk: nama, hargaBeli: '', hargaJual: '' };
+                if (result[key].hargaJual === '') {
+                    const hj = parseNumber(r['Harga Jual']);
+                    if (hj) result[key].hargaJual = hj;
+                }
+                if (result[key].hargaBeli === '') {
+                    const hbRaw = r['Harga Beli'];
+                    if (hbRaw !== undefined && hbRaw !== '' && hbRaw !== null) {
+                        const hb = parseNumber(hbRaw);
+                        if (hb) result[key].hargaBeli = hb;
+                    }
+                }
+            });
+            return Object.values(result).sort((a, b) => a.produk.localeCompare(b.produk, 'id'));
+        }
+
+        function ambilProdukDariBankDataKeMaster() {
+            bacaFormProdukHargaKeWorking();
+            if (!salesData || !salesData.length) {
+                showToast('⚠️ Bank Data Penjualan masih kosong, tidak ada produk yang bisa diambil.', 'warning');
+                return;
+            }
+            const daftarBankData = ambilProdukDariBankData();
+            if (!daftarBankData.length) {
+                showToast('⚠️ Tidak ditemukan nama produk di Bank Data Penjualan.', 'warning');
+                return;
+            }
+            let ditambah = 0,
+                dilengkapi = 0;
+            daftarBankData.forEach(item => {
+                const key = item.produk.toLowerCase();
+                const existing = _produkHargaWorking.find(p => (p.produk || '').trim().toLowerCase() === key);
+                if (existing) {
+                    if ((existing.hargaBeli === '' || existing.hargaBeli === undefined) && item.hargaBeli !==
+                        '') { existing.hargaBeli = item.hargaBeli;
+                        dilengkapi++; }
+                    if ((existing.hargaJual === '' || existing.hargaJual === undefined) && item.hargaJual !==
+                        '') { existing.hargaJual = item.hargaJual;
+                        dilengkapi++; }
+                } else {
+                    _produkHargaWorking.push(item);
+                    ditambah++;
+                }
+            });
+            _produkHargaWorking.sort((a, b) => (a.produk || '').localeCompare(b.produk || '', 'id'));
+            renderModalProdukHarga();
+            let pesan = '📥 ' + ditambah + ' produk baru diambil dari Bank Data Penjualan';
+            if (dilengkapi) pesan += ', ' + dilengkapi + ' harga kosong dilengkapi';
+            pesan += '. Cek lalu klik "💾 Simpan Semua".';
+            showToast(pesan, ditambah || dilengkapi ? 'success' : 'info');
         }
 
         function simpanProdukHargaDariModal() {
@@ -7644,6 +7713,11 @@
             document.getElementById('detailModalTitleGlobal').textContent = '📦 Master Produk & Harga';
             renderModalProdukHarga();
             document.getElementById('detailModalGlobal').classList.add('show');
+            // 🔗 Kalau master masih kosong sama sekali, otomatis coba isi dari
+            // Bank Data Penjualan supaya user tidak mulai dari nol.
+            if (_produkHargaWorking.length === 0 && salesData && salesData.length) {
+                ambilProdukDariBankDataKeMaster();
+            }
         }
 
         document.getElementById('btnBukaProdukHarga').addEventListener('click', bukaModalProdukHarga);
@@ -8126,18 +8200,24 @@
 
             document.getElementById('detailModalTitleGlobal').textContent = `🧾 Detail Faktur - ${noFaktur}`;
             document.getElementById('detailModalBodyGlobal').innerHTML = `
-                    <div style="font-size:11px; line-height:1.9;">
-                        <div><strong>No. Faktur:</strong> ${escapeHtml(noFaktur)}</div>
-                        <div><strong>Tanggal:</strong> ${fmtTanggal(first.Tanggal)}</div>
-                        <div><strong>Sales:</strong> ${escapeHtml(first.Sales || '-')}</div>
-                        <div><strong>Customer:</strong> ${escapeHtml(first.Customer || '-')}</div>
-                        <div><strong>Alamat:</strong> ${escapeHtml(first.Alamat || '-')}</div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <strong>Pembayaran:</strong>
+                    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                        <div style="font-size:11px; line-height:1.9; min-width:220px;">
+                            <div><strong>No. Faktur:</strong> ${escapeHtml(noFaktur)}</div>
+                            <div><strong>Tanggal:</strong> ${fmtTanggal(first.Tanggal)}</div>
+                            <div><strong>Sales:</strong> ${escapeHtml(first.Sales || '-')}</div>
+                            <div><strong>Customer:</strong> ${escapeHtml(first.Customer || '-')}</div>
+                            <div><strong>Alamat:</strong> ${escapeHtml(first.Alamat || '-')}</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <strong>Pembayaran:</strong>
                             <select id="tab1EditPembayaran" style="padding:3px 8px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;font-weight:600;">
                                 <option value="Cash" ${isCash ? 'selected' : ''}>Cash</option>
                                 <option value="Tempo" ${!isCash ? 'selected' : ''}>Tempo</option>
                             </select>
+                            </div>
+                        </div>
+                        <div style="min-width:220px;max-width:360px;text-align:right;">
+                            <div style="font-size:13px;font-weight:800;color:#c2410c;line-height:1.4;">BISA RUBAH TRANSAKSI DISINI</div>
+                            <div style="font-size:10px;color:#6b7280;margin-top:2px;">( jika klik <strong>Transaksi Batal</strong>, data akan dipindah ke Trash dan tidak akan ikut dijumlahkan )</div>
                         </div>
                     </div>
                     <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
