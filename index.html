@@ -3526,7 +3526,12 @@
             piutangNotes: new ApiTable('piutangNotes'),
             cashNotes: new ApiTable('cashNotes'),
             cetakTagihanMap: new ApiTable('cetakTagihanMap'),
-            version: function() { return { stores: function() { return { upgrade: function() {} }; } }; }
+            version: function() { return { stores: function() { return { upgrade: function() {} }; } }; },
+            // Kompatibilitas dengan kode lama (Dexie): db.transaction('rw', db.sales, async () => {...})
+            // Server API tidak butuh transaksi eksplisit, jadi cukup jalankan callback-nya langsung.
+            transaction: async function(mode, table, fn) {
+                return await fn();
+            }
         };
 
         async function migrateFromLocalStorage() {
@@ -4679,11 +4684,11 @@
                 'Harga Jual': harga, 'Disc': disc, 'Total': totalBaru, 'Sales': sales,
                 'Customer': customer, 'Alamat': alamat, 'Pembayaran': pembayaran, 'Harga Beli': hargaBeli,
                 'Profit': profitBaru });
-            await saveSalesData();
+            const okSave = await saveSalesData();
             rebuildSalesFilterOptions();
             salesCurrentDateIndex = Infinity;
             renderSales();
-            showToast('✅ Transaksi ditambahkan.', 'success');
+            if (okSave) showToast('✅ Transaksi ditambahkan.', 'success');
         });
         document.getElementById('fileImportSales').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -4744,11 +4749,11 @@
                             'Pembayaran': pembayaran, 'Harga Beli': hargaBeli, 'Profit': profit });
                         added++;
                     }
-                    await saveSalesData();
+                    const okSave = await saveSalesData();
                     rebuildSalesFilterOptions();
                     salesCurrentDateIndex = Infinity;
                     renderSales();
-                    showToast('✅ ' + added + ' baris tersimpan permanen (aman untuk refresh).', 'success');
+                    if (okSave) showToast('✅ ' + added + ' baris tersimpan permanen (aman untuk refresh).', 'success');
                 } catch (err) {
                     showToast('❌ Gagal baca file: ' + err.message, 'warning');
                 }
