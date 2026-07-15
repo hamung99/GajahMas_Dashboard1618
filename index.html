@@ -3245,6 +3245,22 @@
                 </div>
             </div>
 
+            <!-- Card 1C: Master Produk & Harga -->
+            <div class="tab8-card">
+                <div class="tab8-card-head">
+                    <div class="title">📦 PRODUK &amp; HARGA <small>Daftar produk, harga beli, dan harga jual — bisa diedit</small></div>
+                    <span style="font-size:10px; color:#b0c4de;" id="produkHargaCountLabel">0 produk</span>
+                </div>
+                <div class="tab8-card-body">
+                    <div class="no-print" style="font-size:10px;color:#6b7280;margin-bottom:12px;">
+                        Kelola daftar master produk beserta harga beli &amp; harga jualnya di sini. Data disimpan di perangkat ini (seperti draft Input Harian).
+                    </div>
+                    <button class="btn btn-success" id="btnBukaProdukHarga" style="font-size:13px;padding:10px 24px;">
+                        <i class="bi bi-box-seam"></i> 📦 Buka Produk &amp; Harga
+                    </button>
+                </div>
+            </div>
+
             <!-- Card 2: Data Sampah -->
             <div class="tab8-card">
                 <div class="tab8-card-head">
@@ -3440,6 +3456,12 @@
             t._hideTimer = setTimeout(() => t.classList.remove('show'), 2800);
         }
 
+        // Mendeteksi teks "mentah" hasil Date.toString() JS, misalnya:
+        // "Thu Apr 02 2026 23:59:48 GMT+0700 (Western Indonesia Time)"
+        // Ini bisa muncul kalau sumber Excel-nya sendiri sudah salah format
+        // (kolom Alamat/Tgl Faktur ketiban nilai Date mentah).
+        const RE_TEKS_TANGGAL_MENTAH = /^[A-Za-z]{3}\s[A-Za-z]{3}\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2}\sGMT/;
+
         function formatTanggalExcel(v) {
             if (v === undefined || v === null || v === '') return '';
             if (v instanceof Date) {
@@ -3454,7 +3476,28 @@
                     if (dt) return String(dt.d).padStart(2, '0') + '/' + String(dt.m).padStart(2, '0') + '/' + dt.y;
                 } catch (e) {}
             }
+            if (typeof v === 'string' && RE_TEKS_TANGGAL_MENTAH.test(v.trim())) {
+                const parsed = new Date(v);
+                if (!isNaN(parsed.getTime())) {
+                    const d = String(parsed.getDate()).padStart(2, '0');
+                    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const y = parsed.getFullYear();
+                    return d + '/' + m + '/' + y;
+                }
+                return '';
+            }
             return String(v);
+        }
+
+        // Membersihkan nilai kolom Alamat: kalau ternyata isinya objek Date atau
+        // teks Date.toString() mentah (bug dari file sumber), jangan ditampilkan
+        // apa adanya karena bukan alamat yang valid — kosongkan saja.
+        function bersihkanTeksAlamat(v) {
+            if (v === undefined || v === null || v === '') return '';
+            if (v instanceof Date) return '';
+            const s = String(v);
+            if (RE_TEKS_TANGGAL_MENTAH.test(s.trim())) return '';
+            return s;
         }
 
         function ambilAngka(row, idx) {
@@ -3540,7 +3583,7 @@
                     sales: currentSales,
                     noFaktur: String(noFaktur),
                     namaToko: row[4] ? String(row[4]) : '',
-                    alamat: row[5] ? String(row[5]) : '',
+                    alamat: bersihkanTeksAlamat(row[5]),
                     tglFaktur: formatTanggalExcel(row[6]),
                     jt: formatTanggalExcel(row[7]),
                     tagihan: tagihan,
@@ -4323,12 +4366,25 @@
                 return;
             }
             let html = '';
+            let totalTagihan = 0,
+                totalBayarCash = 0,
+                totalBayarTransfer = 0;
             filteredList.forEach(d => {
                 const ketCls = (d.ket || '').toLowerCase().includes('lunas') ? 'ket-lunas' : (d.ket || '')
                     .toLowerCase().includes('titip') ? 'ket-titip' : '';
+                // 🔧 Bersihkan alamat/tanggal kalau ternyata kadung tersimpan sebagai
+                // teks Date mentah (bug dari file sumber lama) supaya tampil rapi.
+                const alamatBersih = bersihkanTeksAlamat(d.alamat);
+                const tglFakturBersih = formatTanggalExcel(d.tglFaktur);
+                const jtBersih = formatTanggalExcel(d.jt);
+                totalTagihan += parseNumber(d.tagihan);
+                totalBayarCash += parseNumber(d.bayarCash);
+                totalBayarTransfer += parseNumber(d.bayarTransfer);
                 html +=
-                    `<tr><td class="center">${d.no}</td><td>${d.sales}</td><td>${d.noFaktur}</td><td>${d.namaToko}</td><td>${d.alamat}</td><td>${d.tglFaktur}</td><td>${d.jt}</td><td class="num">${fmtRp(d.tagihan)}</td><td class="num">${fmtRp(d.bayarCash)}</td><td class="num">${fmtRp(d.bayarTransfer)}</td><td class="${ketCls}">${d.ket}</td></tr>`;
+                    `<tr><td class="center">${d.no}</td><td>${d.sales}</td><td>${d.noFaktur}</td><td>${d.namaToko}</td><td>${alamatBersih}</td><td>${tglFakturBersih}</td><td>${jtBersih}</td><td class="num">${fmtRp(d.tagihan)}</td><td class="num">${fmtRp(d.bayarCash)}</td><td class="num">${fmtRp(d.bayarTransfer)}</td><td class="${ketCls}">${d.ket}</td></tr>`;
             });
+            html +=
+                `<tr style="font-weight:700;background:#f1f5f9;border-top:2px solid #94a3b8;"><td colspan="7" style="text-align:right;padding-right:10px;">TOTAL</td><td class="num">${fmtRp(totalTagihan)}</td><td class="num">${fmtRp(totalBayarCash)}</td><td class="num">${fmtRp(totalBayarTransfer)}</td><td></td></tr>`;
             tbody.innerHTML = html;
         }
         document.getElementById('fakturModalCloseTab1').addEventListener('click', tutupFakturModalTab1);
@@ -4929,7 +4985,12 @@
                     const gidx = salesIndexMap.get(r);
                     const cbChecked = salesRowsSelected.has(gidx) ? 'checked' : '';
                     const noFakturSafe = escapeHtml(String(r['No.Faktur'] || ''));
-                    return `<tr><td><input type="checkbox" class="sales-trash-checkbox" data-gidx="${gidx}" ${cbChecked}></td><td>${fmtTanggal(r.Tanggal)}</td><td>${noFakturSafe ? `<a href="#" class="tab1-faktur-link" data-faktur="${noFakturSafe}" style="color:#1f4e78;font-weight:700;text-decoration:underline;">${noFakturSafe}</a>` : ''}</td><td>${r.Produk || ''}</td><td class="num">${jumlah}</td><td>${r.Satuan || ''}</td><td class="num">${fmtRp(harga)}</td><td class="num">${fmtRp(disc)}</td><td class="num">${fmtRp(total)}</td><td>${r.Sales || ''}</td><td>${r.Customer || ''}</td><td>${r.Alamat || ''}</td><td><span class="badge ${r.Pembayaran === 'Cash' ? 'cash' : 'tempo'}">${r.Pembayaran || 'Tempo'}</span></td></tr>`;
+                    const sudahDiedit = !!r._Diedit;
+                    const fakturLinkStyle = sudahDiedit ?
+                        'color:#b45309;font-weight:700;text-decoration:underline;' :
+                        'color:#1f4e78;font-weight:700;text-decoration:underline;';
+                    const fakturLinkTitle = sudahDiedit ? ' title="Faktur ini pernah diedit dari modal detail"' : '';
+                    return `<tr><td><input type="checkbox" class="sales-trash-checkbox" data-gidx="${gidx}" ${cbChecked}></td><td>${fmtTanggal(r.Tanggal)}</td><td>${noFakturSafe ? `<a href="#" class="tab1-faktur-link" data-faktur="${noFakturSafe}" style="${fakturLinkStyle}"${fakturLinkTitle}>${sudahDiedit ? '✏️ ' : ''}${noFakturSafe}</a>` : ''}</td><td>${r.Produk || ''}</td><td class="num">${jumlah}</td><td>${r.Satuan || ''}</td><td class="num">${fmtRp(harga)}</td><td class="num">${fmtRp(disc)}</td><td class="num">${fmtRp(total)}</td><td>${r.Sales || ''}</td><td>${r.Customer || ''}</td><td>${r.Alamat || ''}</td><td><span class="badge ${r.Pembayaran === 'Cash' ? 'cash' : 'tempo'}">${r.Pembayaran || 'Tempo'}</span></td></tr>`;
                 }).join('');
             }
             updateSalesSelectedInfo();
@@ -5006,9 +5067,17 @@
             if (!noFaktur) return;
             const produk = prompt('Produk:', '');
             if (!produk) return;
+            // 🔗 Link ke Master Produk & Harga (Tab 8): kalau produk ini sudah ada
+            // di daftar master, harga jual & harga beli otomatis dipakai sebagai default.
+            const hargaMaster = cariHargaProdukMaster(produk);
+            if (hargaMaster) showToast('🔗 Harga ditemukan di Master Produk & Harga: ' + produk, 'info');
             const jumlah = parseFloat(prompt('Jumlah:', '1')) || 1;
-            const harga = parseFloat(prompt('Harga Jual:', '0')) || 0;
-            const hargaBeliInput = prompt('Harga Beli (kosongkan jika tidak tahu):', '');
+            const hargaJualDefault = hargaMaster && hargaMaster.hargaJual !== '' ? String(hargaMaster
+                .hargaJual) : '0';
+            const harga = parseFloat(prompt('Harga Jual:', hargaJualDefault)) || 0;
+            const hargaBeliDefault = hargaMaster && hargaMaster.hargaBeli !== '' ? String(hargaMaster
+                .hargaBeli) : '';
+            const hargaBeliInput = prompt('Harga Beli (kosongkan jika tidak tahu):', hargaBeliDefault);
             const hargaBeli = (hargaBeliInput === null || hargaBeliInput.trim() === '') ? '' : (parseFloat(
                 hargaBeliInput) || 0);
             const disc = parseFloat(prompt('Disc:', '0')) || 0;
@@ -5064,8 +5133,14 @@
                         let pembayaran = String(row[11] || '').trim();
                         if (pembayaran !== 'Cash' && pembayaran !== 'Tempo') pembayaran = 'Tempo';
                         const hargaBeliRaw = row[12];
-                        const hargaBeli = (hargaBeliRaw === undefined || hargaBeliRaw === null || hargaBeliRaw ===
+                        let hargaBeli = (hargaBeliRaw === undefined || hargaBeliRaw === null || hargaBeliRaw ===
                             '') ? '' : parseNumber(hargaBeliRaw);
+                        // 🔗 Link ke Master Produk & Harga (Tab 8): kalau Harga Beli kosong di file
+                        // Excel, coba ambil otomatis dari daftar Master Produk berdasarkan nama produk.
+                        if (hargaBeli === '') {
+                            const hMaster = cariHargaProdukMaster(String(row[2] || ''));
+                            if (hMaster && hMaster.hargaBeli !== '') hargaBeli = hMaster.hargaBeli;
+                        }
                         // Koreksi otomatis: sebagian file sumber menulis Harga Jual/Disc dalam satuan
                         // RIBUAN (mis. 209 maksudnya Rp209.000) sementara Harga Beli ditulis dalam
                         // rupiah penuh (mis. 208800). Jika rasio Harga Beli terhadap Harga Jual sangat
@@ -7393,6 +7468,189 @@
         window.addEventListener('orientationchange', scheduleFitTableWraps);
 
         // ================================================================
+        // MASTER PRODUK & HARGA (Tab 8) — daftar produk + harga beli/jual,
+        // disimpan lokal di browser (seperti draft Input Harian), bisa
+        // ditambah, diedit, dicari, dan dihapus lewat modal.
+        // ================================================================
+        const PRODUK_HARGA_KEY = 'produkHargaMaster';
+        let _produkHargaWorking = [];
+        let _produkHargaSearchTerm = '';
+
+        function loadProdukHargaMaster() {
+            try {
+                const raw = localStorage.getItem(PRODUK_HARGA_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        }
+
+        function saveProdukHargaMaster(list) {
+            try {
+                localStorage.setItem(PRODUK_HARGA_KEY, JSON.stringify(list));
+                return true;
+            } catch (e) {
+                showToast('❌ Gagal menyimpan daftar produk: ' + e.message, 'warning');
+                return false;
+            }
+        }
+
+        function updateProdukHargaCountLabel() {
+            const el = document.getElementById('produkHargaCountLabel');
+            if (el) el.textContent = loadProdukHargaMaster().length + ' produk';
+        }
+
+        // ================================================================
+        // LINK: Produk & Harga (Tab 8) <-> Bank Data Penjualan (Tab 1)
+        // Mencari harga beli/jual dari Master Produk berdasarkan nama produk
+        // (exact match dulu, kalau tidak ada baru cari yang mengandung teks).
+        // ================================================================
+        function cariHargaProdukMaster(namaProduk) {
+            const nama = (namaProduk || '').trim().toLowerCase();
+            if (!nama) return null;
+            const master = loadProdukHargaMaster();
+            let found = master.find(function(p) { return (p.produk || '').trim().toLowerCase() === nama; });
+            if (!found) found = master.find(function(p) {
+                const pn = (p.produk || '').trim().toLowerCase();
+                return pn && (pn.includes(nama) || nama.includes(pn));
+            });
+            if (!found) return null;
+            return {
+                hargaBeli: (found.hargaBeli !== undefined && found.hargaBeli !== '') ? (parseFloat(found
+                    .hargaBeli) || 0) : '',
+                hargaJual: (found.hargaJual !== undefined && found.hargaJual !== '') ? (parseFloat(found
+                    .hargaJual) || 0) : ''
+            };
+        }
+
+        // Isi ulang <datalist> nama produk (untuk autocomplete di form Bank Data Penjualan)
+        function refreshProdukMasterDatalist() {
+            let dl = document.getElementById('produkMasterDatalist');
+            if (!dl) {
+                dl = document.createElement('datalist');
+                dl.id = 'produkMasterDatalist';
+                document.body.appendChild(dl);
+            }
+            const master = loadProdukHargaMaster();
+            dl.innerHTML = master.map(function(p) {
+                return '<option value="' + escapeHtml(p.produk || '') + '">';
+            }).join('');
+            const fProduk = document.getElementById('fProdukSales');
+            if (fProduk && !fProduk.hasAttribute('list')) fProduk.setAttribute('list', 'produkMasterDatalist');
+        }
+
+        function bacaFormProdukHargaKeWorking() {
+            const tbody = document.getElementById('phTableBody');
+            if (!tbody) return;
+            tbody.querySelectorAll('tr[data-idx]').forEach(tr => {
+                const idx = parseInt(tr.dataset.idx, 10);
+                const item = _produkHargaWorking[idx];
+                if (!item) return;
+                const produkInput = tr.querySelector('.ph-produk');
+                const hbInput = tr.querySelector('.ph-hargabeli');
+                const hjInput = tr.querySelector('.ph-hargajual');
+                if (produkInput) item.produk = produkInput.value.trim();
+                if (hbInput) item.hargaBeli = hbInput.value === '' ? '' : parseAngka(hbInput.value);
+                if (hjInput) item.hargaJual = hjInput.value === '' ? '' : parseAngka(hjInput.value);
+            });
+        }
+
+        function renderModalProdukHarga() {
+            const term = _produkHargaSearchTerm.trim().toLowerCase();
+            const filteredIdx = [];
+            _produkHargaWorking.forEach((p, i) => {
+                if (!term || (p.produk || '').toLowerCase().includes(term)) filteredIdx.push(i);
+            });
+
+            const rowsHtml = filteredIdx.map(i => {
+                const p = _produkHargaWorking[i];
+                return `<tr data-idx="${i}">
+                    <td><input type="text" class="ph-produk" value="${escapeHtml(p.produk || '')}" style="width:100%;min-width:150px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td><input type="number" class="ph-hargabeli num" value="${p.hargaBeli !== undefined && p.hargaBeli !== '' ? p.hargaBeli : ''}" placeholder="-" style="width:100px;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td><input type="number" class="ph-hargajual num" value="${p.hargaJual !== undefined && p.hargaJual !== '' ? p.hargaJual : ''}" placeholder="-" style="width:100px;text-align:right;padding:4px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px;"></td>
+                    <td style="text-align:center;"><button type="button" class="btn-hapus-produk-harga" data-idx="${i}" style="color:#dc3545;background:none;border:none;font-size:16px;cursor:pointer;line-height:1;" title="Hapus produk ini">&times;</button></td>
+                </tr>`;
+            }).join('');
+
+            const body = document.getElementById('detailModalBodyGlobal');
+            body.innerHTML = `
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+                    <input type="text" id="phSearchInput" placeholder="🔍 Cari produk..." value="${escapeHtml(_produkHargaSearchTerm)}" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;">
+                    <button type="button" id="phBtnTambah" class="btn btn-outline" style="font-size:11px;padding:6px 14px;">+ Tambah Produk</button>
+                </div>
+                <div style="max-height:50vh;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                        <thead>
+                            <tr style="background:#e5e7eb;position:sticky;top:0;">
+                                <th style="text-align:left;padding:6px 8px;">Produk</th>
+                                <th style="text-align:right;padding:6px 8px;">Harga Beli</th>
+                                <th style="text-align:right;padding:6px 8px;">Harga Jual</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="phTableBody">
+                            ${rowsHtml || `<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8;">${term ? 'Tidak ada produk yang cocok.' : 'Belum ada produk. Klik "+ Tambah Produk" untuk mulai.'}</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+                    <button type="button" id="phBtnSimpan" class="btn btn-success" style="font-size:12px;padding:8px 20px;">💾 Simpan Semua</button>
+                </div>
+            `;
+
+            const searchInput = document.getElementById('phSearchInput');
+            searchInput.addEventListener('input', function() {
+                bacaFormProdukHargaKeWorking();
+                _produkHargaSearchTerm = this.value;
+                const cursorPos = this.selectionStart;
+                renderModalProdukHarga();
+                const el = document.getElementById('phSearchInput');
+                if (el) { el.focus();
+                    el.setSelectionRange(cursorPos, cursorPos); }
+            });
+            document.getElementById('phBtnTambah').addEventListener('click', function() {
+                bacaFormProdukHargaKeWorking();
+                _produkHargaWorking.unshift({ produk: '', hargaBeli: '', hargaJual: '' });
+                renderModalProdukHarga();
+            });
+            document.getElementById('phBtnSimpan').addEventListener('click', simpanProdukHargaDariModal);
+            body.querySelectorAll('.btn-hapus-produk-harga').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    bacaFormProdukHargaKeWorking();
+                    const idx = parseInt(this.dataset.idx, 10);
+                    if (!confirm('Hapus produk ini dari daftar?')) return;
+                    _produkHargaWorking.splice(idx, 1);
+                    renderModalProdukHarga();
+                });
+            });
+        }
+
+        function simpanProdukHargaDariModal() {
+            bacaFormProdukHargaKeWorking();
+            const cleaned = _produkHargaWorking.filter(p => (p.produk || '').trim() !== '');
+            cleaned.sort((a, b) => (a.produk || '').localeCompare(b.produk || '', 'id'));
+            _produkHargaWorking = cleaned;
+            const ok = saveProdukHargaMaster(cleaned);
+            if (ok) {
+                updateProdukHargaCountLabel();
+                refreshProdukMasterDatalist();
+                showToast('💾 Daftar Produk & Harga berhasil disimpan.', 'success');
+                renderModalProdukHarga();
+            }
+        }
+
+        function bukaModalProdukHarga() {
+            _produkHargaWorking = loadProdukHargaMaster().slice().sort((a, b) =>
+                (a.produk || '').localeCompare(b.produk || '', 'id'));
+            _produkHargaSearchTerm = '';
+            document.getElementById('detailModalTitleGlobal').textContent = '📦 Master Produk & Harga';
+            renderModalProdukHarga();
+            document.getElementById('detailModalGlobal').classList.add('show');
+        }
+
+        document.getElementById('btnBukaProdukHarga').addEventListener('click', bukaModalProdukHarga);
+        updateProdukHargaCountLabel();
+        refreshProdukMasterDatalist();
+
+        // ================================================================
         // TAB 8 - SAVE DATA ALL (BACKUP & RESTORE SEMUA DATA)
         // ================================================================
         function getAllInputHarianKeys() {
@@ -7819,8 +8077,10 @@
             noFaktur = String(noFaktur || '').trim();
             if (!noFaktur) return;
 
-            const rows = salesData.filter(s => String(s['No.Faktur'] || '').trim() === noFaktur);
-            if (!rows.length) return;
+            const gidxList = [];
+            salesData.forEach((s, i) => { if (String(s['No.Faktur'] || '').trim() === noFaktur) gidxList.push(i); });
+            if (!gidxList.length) return;
+            const rows = gidxList.map(i => salesData[i]);
 
             let totalQty = 0,
                 totalJual = 0,
@@ -7828,7 +8088,8 @@
                 totalProfit = 0,
                 adaHargaBeli = false;
 
-            const baris = rows.map(it => {
+            const baris = rows.map((it, i) => {
+                const gidx = gidxList[i];
                 const jumlah = parseNumber(it.Jumlah);
                 const hargaJual = parseNumber(it['Harga Jual']);
                 const disc = parseNumber(it.Disc);
@@ -7849,32 +8110,39 @@
                 totalJual += totalBaris;
                 if (hargaBeli !== null) totalBeli += hargaBeli * jumlah;
                 if (profitBaris !== null) totalProfit += profitBaris;
-                return `<tr>
-                        <td>${escapeHtml(it.Produk || '-')}</td>
-                        <td class="num">${jumlah || 0} ${escapeHtml(it.Satuan || '')}</td>
-                        <td class="num">${hargaBeli !== null ? fmtRp(hargaBeli) : '-'}</td>
-                        <td class="num">${fmtRp(hargaJual)}</td>
-                        <td class="num">${fmtRp(totalBaris)}</td>
-                        <td class="num" style="color:${profitBaris !== null && profitBaris < 0 ? '#b91c1c' : '#15803d'};font-weight:700;">${profitBaris !== null ? fmtRp(profitBaris) : '-'}</td>
+                return `<tr data-gidx="${gidx}" data-disc="${disc}">
+                        <td><input type="text" class="tab1e-produk" list="produkMasterDatalist" value="${escapeHtml(it.Produk || '')}" style="width:100%;min-width:110px;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td><input type="number" class="tab1e-qty num" value="${jumlah || 0}" style="width:55px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td><input type="number" class="tab1e-hargabeli num" value="${hargaBeli !== null ? hargaBeli : ''}" placeholder="-" style="width:80px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td><input type="number" class="tab1e-hargajual num" value="${hargaJual || 0}" style="width:80px;text-align:right;padding:3px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:10.5px;"></td>
+                        <td class="num tab1e-total" style="font-weight:600;">${fmtRp(totalBaris)}</td>
+                        <td class="num tab1e-profit" style="color:${profitBaris !== null && profitBaris < 0 ? '#b91c1c' : '#15803d'};font-weight:700;">${profitBaris !== null ? fmtRp(profitBaris) : '-'}</td>
                     </tr>`;
             }).join('');
 
             const first = rows[0];
             const marginPct = totalJual > 0 && adaHargaBeli ? ((totalProfit / totalJual) * 100).toFixed(1) : null;
+            const isCash = first.Pembayaran === 'Cash';
 
             document.getElementById('detailModalTitleGlobal').textContent = `🧾 Detail Faktur - ${noFaktur}`;
             document.getElementById('detailModalBodyGlobal').innerHTML = `
-                    <div style="font-size:11px; line-height:1.8;">
+                    <div style="font-size:11px; line-height:1.9;">
                         <div><strong>No. Faktur:</strong> ${escapeHtml(noFaktur)}</div>
                         <div><strong>Tanggal:</strong> ${fmtTanggal(first.Tanggal)}</div>
                         <div><strong>Sales:</strong> ${escapeHtml(first.Sales || '-')}</div>
                         <div><strong>Customer:</strong> ${escapeHtml(first.Customer || '-')}</div>
                         <div><strong>Alamat:</strong> ${escapeHtml(first.Alamat || '-')}</div>
-                        <div><strong>Pembayaran:</strong> <span class="badge ${first.Pembayaran === 'Cash' ? 'cash' : 'tempo'}">${escapeHtml(first.Pembayaran || 'Tempo')}</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <strong>Pembayaran:</strong>
+                            <select id="tab1EditPembayaran" style="padding:3px 8px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;font-weight:600;">
+                                <option value="Cash" ${isCash ? 'selected' : ''}>Cash</option>
+                                <option value="Tempo" ${!isCash ? 'selected' : ''}>Tempo</option>
+                            </select>
+                        </div>
                     </div>
                     <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
-                    <div style="font-size:11px;font-weight:700;margin-bottom:4px;">📦 Rincian Item</div>
-                    <table style="width:100%; border-collapse:collapse; font-size:10.5px;">
+                    <div style="font-size:11px;font-weight:700;margin-bottom:4px;">📦 Rincian Item <span style="font-weight:400;color:#6b7280;">(bisa diedit — Produk, Qty, Harga Beli, Harga Jual. Total &amp; Profit otomatis terisi)</span></div>
+                    <table id="tab1EditFakturTable" style="width:100%; border-collapse:collapse; font-size:10.5px;">
                         <thead>
                             <tr style="border-bottom:1px solid var(--line);">
                                 <th style="text-align:left;padding:3px 4px;">Produk</th>
@@ -7889,22 +8157,174 @@
                         <tfoot>
                             <tr style="border-top:2px solid var(--line); font-weight:700;">
                                 <td style="padding:3px 4px;">TOTAL</td>
-                                <td class="num" style="padding:3px 4px;">${totalQty}</td>
-                                <td class="num" style="padding:3px 4px;">${totalBeli ? fmtRp(totalBeli) : '-'}</td>
+                                <td class="num" style="padding:3px 4px;" id="tab1EditTotalQty">${totalQty}</td>
                                 <td class="num" style="padding:3px 4px;"></td>
-                                <td class="num" style="padding:3px 4px;">${fmtRp(totalJual)}</td>
-                                <td class="num" style="padding:3px 4px;color:${totalProfit < 0 ? '#b91c1c' : '#15803d'};">${adaHargaBeli ? fmtRp(totalProfit) : '-'}</td>
+                                <td class="num" style="padding:3px 4px;"></td>
+                                <td class="num" style="padding:3px 4px;" id="tab1EditTotalJual">${fmtRp(totalJual)}</td>
+                                <td class="num" style="padding:3px 4px;color:${totalProfit < 0 ? '#b91c1c' : '#15803d'};" id="tab1EditTotalProfit">${adaHargaBeli ? fmtRp(totalProfit) : '-'}</td>
                             </tr>
                         </tfoot>
                     </table>
-                    <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
-                    <div style="font-size:11px; line-height:1.8;">
-                        <div><strong>💰 Total Profit Faktur:</strong> <span style="color:${totalProfit < 0 ? '#b91c1c' : '#15803d'};font-weight:700;">${adaHargaBeli ? fmtRp(totalProfit) : 'Harga Beli belum diisi'}</span></div>
-                        ${marginPct !== null ? `<div><strong>📊 Margin:</strong> ${marginPct}%</div>` : ''}
-                        ${!adaHargaBeli ? `<div style="color:#b45309;">⚠️ Kolom "Harga Beli" belum terisi untuk faktur ini, sehingga Profit belum bisa dihitung. Isi kolom "Harga Beli" saat import Excel (kolom ke-13) agar Profit otomatis muncul.</div>` : ''}
+                    <div style="font-size:11px; line-height:1.8; margin-top:8px;">
+                        <div><strong>💰 Total Profit Faktur:</strong> <span id="tab1EditProfitFaktur" style="color:${totalProfit < 0 ? '#b91c1c' : '#15803d'};font-weight:700;">${adaHargaBeli ? fmtRp(totalProfit) : 'Harga Beli belum diisi'}</span></div>
+                        ${marginPct !== null ? `<div id="tab1EditMarginWrap"><strong>📊 Margin:</strong> <span id="tab1EditMargin">${marginPct}</span>%</div>` : `<div id="tab1EditMarginWrap" style="display:none;"><strong>📊 Margin:</strong> <span id="tab1EditMargin">0</span>%</div>`}
+                        <div style="color:#b45309;" id="tab1EditWarnHargaBeli" ${adaHargaBeli ? 'hidden' : ''}>⚠️ Kolom "Harga Beli" belum terisi untuk sebagian/semua item, sehingga Profit belum bisa dihitung penuh.</div>
+                    </div>
+                    <hr style="margin:10px 0; border:none; border-top:1px solid var(--line);">
+                    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <button type="button" id="tab1BtnTransaksiBatal" class="btn btn-danger" style="font-size:11px;padding:6px 14px;" data-faktur="${escapeHtml(noFaktur)}">❌ Transaksi Batal</button>
+                        <button type="button" id="tab1BtnUbahFaktur" class="btn btn-success" style="font-size:11px;padding:6px 14px;" data-faktur="${escapeHtml(noFaktur)}">✅ Ubah &amp; Simpan</button>
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
+            tab1BindEditFakturModalEvents();
+        }
+
+        // Hitung ulang Total & Profit per baris (live) setiap kali user mengetik
+        // di kolom Qty/Harga Beli/Harga Jual pada modal edit faktur Tab 1.
+        function tab1HitungUlangBarisEdit(tr) {
+            const disc = parseNumber(tr.dataset.disc || 0);
+            const qty = parseAngka(tr.querySelector('.tab1e-qty').value);
+            const hargaBeliRaw = tr.querySelector('.tab1e-hargabeli').value;
+            const hargaBeli = hargaBeliRaw === '' ? null : parseAngka(hargaBeliRaw);
+            const hargaJual = parseAngka(tr.querySelector('.tab1e-hargajual').value);
+            const total = (qty * hargaJual) - disc;
+            const profit = hargaBeli !== null ? (total - (hargaBeli * qty)) : null;
+            tr.querySelector('.tab1e-total').textContent = fmtRp(total);
+            const profitEl = tr.querySelector('.tab1e-profit');
+            profitEl.textContent = profit !== null ? fmtRp(profit) : '-';
+            profitEl.style.color = (profit !== null && profit < 0) ? '#b91c1c' : '#15803d';
+            tab1HitungUlangTotalKeseluruhanEdit();
+        }
+
+        function tab1HitungUlangTotalKeseluruhanEdit() {
+            const table = document.getElementById('tab1EditFakturTable');
+            if (!table) return;
+            let totalQty = 0,
+                totalJual = 0,
+                totalProfit = 0,
+                adaHargaBeli = false;
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                const disc = parseNumber(tr.dataset.disc || 0);
+                const qty = parseAngka(tr.querySelector('.tab1e-qty').value);
+                const hargaBeliRaw = tr.querySelector('.tab1e-hargabeli').value;
+                const hargaBeli = hargaBeliRaw === '' ? null : parseAngka(hargaBeliRaw);
+                const hargaJual = parseAngka(tr.querySelector('.tab1e-hargajual').value);
+                const total = (qty * hargaJual) - disc;
+                totalQty += qty;
+                totalJual += total;
+                if (hargaBeli !== null) { adaHargaBeli = true;
+                    totalProfit += (total - (hargaBeli * qty)); }
+            });
+            document.getElementById('tab1EditTotalQty').textContent = totalQty;
+            document.getElementById('tab1EditTotalJual').textContent = fmtRp(totalJual);
+            document.getElementById('tab1EditTotalProfit').textContent = adaHargaBeli ? fmtRp(totalProfit) : '-';
+            document.getElementById('tab1EditProfitFaktur').textContent = adaHargaBeli ? fmtRp(totalProfit) :
+                'Harga Beli belum diisi';
+            document.getElementById('tab1EditProfitFaktur').style.color = (adaHargaBeli && totalProfit < 0) ?
+                '#b91c1c' : '#15803d';
+            const marginWrap = document.getElementById('tab1EditMarginWrap');
+            const warn = document.getElementById('tab1EditWarnHargaBeli');
+            if (adaHargaBeli && totalJual > 0) {
+                marginWrap.style.display = '';
+                document.getElementById('tab1EditMargin').textContent = ((totalProfit / totalJual) * 100).toFixed(1);
+                warn.hidden = true;
+            } else {
+                marginWrap.style.display = 'none';
+                warn.hidden = false;
+            }
+        }
+
+        function tab1BindEditFakturModalEvents() {
+            const table = document.getElementById('tab1EditFakturTable');
+            if (table) {
+                table.querySelectorAll('tbody tr').forEach(tr => {
+                    tr.querySelectorAll('.tab1e-qty, .tab1e-hargabeli, .tab1e-hargajual').forEach(inp => {
+                        inp.addEventListener('input', () => tab1HitungUlangBarisEdit(tr));
+                    });
+                    // 🔗 Link ke Master Produk & Harga (Tab 8): saat nama produk diubah/dipilih
+                    // dari daftar, harga beli & harga jual otomatis terisi kalau produk dikenali.
+                    const produkInp = tr.querySelector('.tab1e-produk');
+                    if (produkInp) {
+                        produkInp.addEventListener('change', function() {
+                            const h = cariHargaProdukMaster(this.value);
+                            if (!h) return;
+                            const beliInp = tr.querySelector('.tab1e-hargabeli');
+                            const jualInp = tr.querySelector('.tab1e-hargajual');
+                            if (beliInp && !beliInp.value && h.hargaBeli !== '') beliInp.value = h.hargaBeli;
+                            if (jualInp && (!jualInp.value || jualInp.value === '0') && h.hargaJual !== '')
+                                jualInp.value = h.hargaJual;
+                            tab1HitungUlangBarisEdit(tr);
+                        });
+                    }
+                });
+            }
+            const btnUbah = document.getElementById('tab1BtnUbahFaktur');
+            if (btnUbah) btnUbah.addEventListener('click', function() { tab1SimpanPerubahanFaktur(this.dataset.faktur); });
+            const btnBatal = document.getElementById('tab1BtnTransaksiBatal');
+            if (btnBatal) btnBatal.addEventListener('click', function() { tab1BatalkanTransaksiFaktur(this.dataset.faktur); });
+        }
+
+        // Set penanda faktur yang pernah diedit lewat modal ini, supaya
+        // No.Faktur-nya bisa ditandai warna beda di tabel Bank Data Penjualan.
+        let editedFakturSet = new Set();
+
+        async function tab1SimpanPerubahanFaktur(noFaktur) {
+            const table = document.getElementById('tab1EditFakturTable');
+            if (!table) return;
+            const pembayaranBaru = document.getElementById('tab1EditPembayaran').value;
+
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                const gidx = parseInt(tr.dataset.gidx, 10);
+                const row = salesData[gidx];
+                if (!row) return;
+                const disc = parseNumber(tr.dataset.disc || 0);
+                const produkBaru = tr.querySelector('.tab1e-produk').value.trim();
+                const qtyBaru = parseAngka(tr.querySelector('.tab1e-qty').value);
+                const hargaBeliRaw = tr.querySelector('.tab1e-hargabeli').value;
+                const hargaBeliBaru = hargaBeliRaw === '' ? '' : parseAngka(hargaBeliRaw);
+                const hargaJualBaru = parseAngka(tr.querySelector('.tab1e-hargajual').value);
+                const totalBaru = (qtyBaru * hargaJualBaru) - disc;
+                const profitBaru = hargaBeliRaw === '' ? '' : (totalBaru - (hargaBeliBaru * qtyBaru));
+
+                row.Produk = produkBaru;
+                row.Jumlah = qtyBaru;
+                row['Harga Beli'] = hargaBeliBaru;
+                row['Harga Jual'] = hargaJualBaru;
+                row.Total = totalBaru;
+                row.Profit = profitBaru;
+                row.Pembayaran = pembayaranBaru;
+                row._Diedit = true;
+            });
+
+            editedFakturSet.add(noFaktur);
+
+            const ok = await saveSalesData();
+            if (!ok) return;
+
+            filterCache.clear();
+            rebuildSalesFilterOptions();
+            renderSales();
+            if (document.getElementById('tab9').classList.contains('active')) await refreshRekapProfit();
+            document.getElementById('detailModalGlobal').classList.remove('show');
+            showToast(`✅ Perubahan faktur ${noFaktur} berhasil disimpan ke Bank Data Penjualan.`, 'success');
+        }
+
+        async function tab1BatalkanTransaksiFaktur(noFaktur) {
+            const gidxList = [];
+            salesData.forEach((s, i) => { if (String(s['No.Faktur'] || '').trim() === noFaktur) gidxList.push(i); });
+            if (!gidxList.length) { showToast('Faktur tidak ditemukan.', 'warning'); return; }
+            if (!confirm(`Batalkan transaksi faktur ${noFaktur}?\nSemua baris (${gidxList.length} item) akan dipindahkan ke Data Sampah dan bisa dipulihkan lagi dari tab Save Data All.`)) return;
+
+            const jumlah = await pindahkanSalesKeSampah(gidxList, 'Transaksi Batal (dari Detail Faktur)');
+            editedFakturSet.delete(noFaktur);
+            rebuildSalesFilterOptions();
+            salesCurrentDateIndex = Infinity;
+            renderSales();
+            renderTrashTable();
+            renderRingkasanSaveAll();
+            document.getElementById('detailModalGlobal').classList.remove('show');
+            showToast(`❌ Transaksi faktur ${noFaktur} dibatalkan — ${jumlah} baris dipindahkan ke Data Sampah.`, 'success');
         }
         document.addEventListener('click', function(e) {
             const target = e.target.closest('.tab1-faktur-link');
