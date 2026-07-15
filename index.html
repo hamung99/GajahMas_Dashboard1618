@@ -2578,6 +2578,32 @@
         .teks-kedip-cepat {
             animation: kedipCepat 0.6s steps(1, end) infinite;
         }
+
+        /* Notifikasi "ada data baru" di sebelah kiri tombol Muat Ulang
+           (Tab Cek Cash & Tab Cek Piutang) — muncul saat ada upload di
+           Tab Data Uang Masuk atau input manual di Tab Pembayaran. */
+        @keyframes notifDenyut {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.55; transform: scale(1.04); }
+        }
+        .data-baru-notif {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 4px 10px;
+            white-space: nowrap;
+            cursor: pointer;
+            animation: notifDenyut 1.1s ease-in-out infinite;
+        }
+        .data-baru-notif:hover {
+            background: #fde68a;
+        }
     </style>
 </head>
 <body>
@@ -2725,6 +2751,8 @@
         <div class="cards" id="pemasukanCards">
             <div class="card"><span class="label">TOTAL CASH</span><span class="value" id="pemTotalCash">Rp 0</span></div>
             <div class="card"><span class="label">TOTAL TRANSFER</span><span class="value" id="pemTotalTransfer">Rp 0</span></div>
+            <div class="card"><span class="label">UANG MASUK MINYAK</span><span class="value orange" id="pemTotalMinyak">Rp 0</span></div>
+            <div class="card"><span class="label">UANG MASUK RUPA RUPA</span><span class="value purple" id="pemTotalRupa">Rp 0</span></div>
             <div class="card"><span class="label">GRAND TOTAL</span><span class="value" id="pemGrandTotal">Rp 0</span></div>
         </div>
         <div class="table-wrap">
@@ -2744,14 +2772,16 @@
         <div class="pt-source-status" id="cashSourceStatus">0 transaksi cash · 0 faktur dipilih</div>
         <div class="cash-filter-bar">
             <div class="field" style="min-width:130px;"><label>Cari Faktur</label><input type="text" id="cekFilterFaktur" placeholder="No faktur..."></div>
-            <div class="field"><label>Sales</label><select id="cekFilterSales"><option value="">Semua Sales</option></select></div>
+            <div class="field"><label>Tanggal</label><input type="date" id="cekFilterTanggal"></div>
             <div class="field"><label>Bulan</label><select id="cekFilterBulan"><option value="">Semua Bulan</option><option value="2026-07">Juli 2026</option></select></div>
+            <div class="field"><label>Sales</label><select id="cekFilterSales"><option value="">Semua Sales</option></select></div>
             <div class="field"><label>Kategori</label><select id="cekFilterKategori"><option value="">Semua</option><option value="Fitri">Fitri</option><option value="Rupa Rupa">Rupa Rupa</option></select></div>
             <div class="field" style="min-width:120px;"><label>Status</label><select id="cekFilterKet"><option value="">Semua</option><option value="cocok">Lunas</option><option value="tidak">Belum Lunas</option></select></div>
             <div class="field" style="justify-content:flex-end;"><label>&nbsp;</label><button class="btn btn-reset" id="cekBtnReset">↺ Reset</button></div>
             <div class="field" style="justify-content:flex-end;"><label>&nbsp;</label><button class="btn btn-success" id="cekCashBtnSendToTab6">📤 Kirim ke Cetak Tagihan</button></div>
             <span class="info-right" id="cashInfoRight">0 data</span>
             <div class="actions">
+                <span class="data-baru-notif" id="cashDataBaruNotif" style="display:none;" title="Klik Muat Ulang untuk memperbarui tabel">🆕 Data baru masuk</span>
                 <button class="btn" id="cekBtnRefresh">🔄 Muat Ulang</button>
             </div>
         </div>
@@ -2789,6 +2819,7 @@
         <div class="pt-source-status" id="ptSourceStatus">0 transaksi penjualan · 0 faktur dipilih</div>
         <div class="filter-bar">
             <div class="field" style="min-width:150px;"><label>Cari Faktur/Customer</label><input type="text" id="ptSearch" placeholder="No faktur / nama toko..."></div>
+            <div class="field"><label>Tanggal</label><input type="date" id="ptTanggal"></div>
             <div class="field"><label>Bulan</label><select id="ptBulan"><option value="">Semua</option></select></div>
             <div class="field"><label>Sales</label><select id="ptSales"><option value="">Semua</option></select></div>
             <div class="field"><label>Kategori</label><select id="ptKategori"><option value="">Semua</option><option value="fitri">Minyak Fitri</option><option value="rupa">Rupa Rupa</option></select></div>
@@ -2796,6 +2827,7 @@
             <div class="field" style="justify-content:flex-end;"><label>&nbsp;</label><button class="btn btn-reset" id="ptBtnReset">↺ Reset</button></div>
             <div class="field" style="justify-content:flex-end;"><label>&nbsp;</label><button class="btn btn-success" id="ptBtnSendToTab6">📤 Kirim ke Cetak Tagihan</button></div>
             <div class="action-inline">
+                <span class="data-baru-notif" id="ptDataBaruNotif" style="display:none;" title="Klik Muat Ulang untuk memperbarui tabel">🆕 Data baru masuk</span>
                 <button class="btn" id="ptBtnRefresh">🔄 Muat Ulang</button>
             </div>
         </div>
@@ -3466,6 +3498,37 @@
             t._hideTimer = setTimeout(() => t.classList.remove('show'), 2800);
         }
 
+        // ================================================================
+        // NOTIFIKASI "DATA BARU" di sebelah kiri tombol Muat Ulang
+        // (Tab Cek Cash & Tab Cek Piutang). Muncul ketika ada:
+        //  1) Upload Excel di Tab Data Uang Masuk (Tab 2)
+        //  2) Input manual disimpan di Tab Pembayaran (Tab 7)
+        // Notifikasi hilang begitu tombol "Muat Ulang" pada tab terkait diklik.
+        // target: 'cash' -> badge di Tab Cek Cash, 'piutang' -> badge di Tab Cek Piutang,
+        //         'both'  -> keduanya
+        // ================================================================
+        function tampilkanNotifDataBaru(target) {
+            if (target === 'cash' || target === 'both') {
+                const el = document.getElementById('cashDataBaruNotif');
+                if (el) el.style.display = 'inline-flex';
+            }
+            if (target === 'piutang' || target === 'both') {
+                const el = document.getElementById('ptDataBaruNotif');
+                if (el) el.style.display = 'inline-flex';
+            }
+        }
+
+        function sembunyikanNotifDataBaru(target) {
+            if (target === 'cash' || target === 'both') {
+                const el = document.getElementById('cashDataBaruNotif');
+                if (el) el.style.display = 'none';
+            }
+            if (target === 'piutang' || target === 'both') {
+                const el = document.getElementById('ptDataBaruNotif');
+                if (el) el.style.display = 'none';
+            }
+        }
+
         // Mendeteksi teks "mentah" hasil Date.toString() JS, misalnya:
         // "Thu Apr 02 2026 23:59:48 GMT+0700 (Western Indonesia Time)"
         // Ini bisa muncul kalau sumber Excel-nya sendiri sudah salah format
@@ -3944,6 +4007,7 @@
         let rawCashSales = [];
         let rawCashDrop = [];
         let cekFilterFaktur = '',
+            cekFilterTanggal = '',
             cekFilterSales = '',
             cekFilterBulan = '',
             cekFilterKategori = '',
@@ -4099,12 +4163,29 @@
         function renderPemasukanCards() {
             let cash = 0,
                 transfer = 0,
-                grand = 0;
+                grand = 0,
+                minyak = 0,
+                rupa = 0;
             cashFiltered.forEach(item => { cash += item.totalCash || 0;
                 transfer += item.totalTransfer || 0;
-                grand += item.grandTotal || 0; });
+                grand += item.grandTotal || 0;
+                // Uang Masuk Minyak & Rupa-Rupa: dijumlah dari rincian per faktur
+                // (piutangDetail + cashDroppingDetail), baik dari hasil upload Excel
+                // (Tab 2) maupun input manual (Tab Pembayaran), karena keduanya sudah
+                // menyimpan split Minyak/Rupa-Rupa per faktur secara terpisah.
+                (item.piutangDetail || []).forEach(d => {
+                    minyak += (d.minyakCash || 0) + (d.minyakTransfer || 0);
+                    rupa += (d.rupaCash || 0) + (d.rupaTransfer || 0);
+                });
+                (item.cashDroppingDetail || []).forEach(d => {
+                    minyak += (d.minyakCash || 0) + (d.minyakTransfer || 0);
+                    rupa += (d.rupaCash || 0) + (d.rupaTransfer || 0);
+                });
+            });
             document.getElementById('pemTotalCash').textContent = fmtRp(cash);
             document.getElementById('pemTotalTransfer').textContent = fmtRp(transfer);
+            document.getElementById('pemTotalMinyak').textContent = fmtRp(minyak);
+            document.getElementById('pemTotalRupa').textContent = fmtRp(rupa);
             document.getElementById('pemGrandTotal').textContent = fmtRp(grand);
         }
 
@@ -4189,6 +4270,7 @@
                     await saveCashData();
                     renderPemasukan();
                     renderCek();
+                    tampilkanNotifDataBaru('both');
                     showToast('Berhasil! Total ' + getCashData().length + ' hari.', 'success');
                 } catch (err) {
                     showToast('Gagal baca file: ' + err.message, 'warning');
@@ -4230,6 +4312,7 @@
                     await saveCashData();
                     renderPemasukan();
                     renderCek();
+                    tampilkanNotifDataBaru('both');
                     showToast('Import berhasil! ' + json.length + ' hari.', 'success');
                 } catch (err) { showToast('Gagal import: ' + err.message, 'warning'); }
             };
@@ -5342,13 +5425,15 @@
                 // SEARCH FILTER: Bypass bulan filter jika ada search faktur
                 if (cekFilterFaktur) {
                     if (!no.includes(cekFilterFaktur.toLowerCase())) return false;
-                    // Jika ada search, apply sales tapi SKIP bulan filter
+                    // Jika ada search, apply sales & tanggal tapi SKIP bulan filter
                     if (cekFilterSales && !sales.includes(cekFilterSales.toLowerCase())) return false;
+                    if (cekFilterTanggal && tglKey !== cekFilterTanggal) return false;
                     return true;
                 }
                 
                 // NORMAL FILTER: Apply semua filter termasuk bulan
                 if (cekFilterSales && !sales.includes(cekFilterSales.toLowerCase())) return false;
+                if (cekFilterTanggal && tglKey !== cekFilterTanggal) return false;
                 if (cekFilterBulan && bulan !== cekFilterBulan) return false;
                 return true;
             });
@@ -5365,8 +5450,9 @@
                 // SEARCH FILTER: Bypass bulan filter jika ada search faktur
                 if (cekFilterFaktur) {
                     if (!no.includes(cekFilterFaktur.toLowerCase())) return false;
-                    // Jika ada search, apply sales, kategori tapi SKIP bulan filter
+                    // Jika ada search, apply sales, tanggal, kategori tapi SKIP bulan filter
                     if (cekFilterSales && !sales.includes(cekFilterSales.toLowerCase())) return false;
+                    if (cekFilterTanggal && tgl !== cekFilterTanggal) return false;
                     if (cekFilterKategori === 'Fitri' && !produk.includes('fitri')) return false;
                     if (cekFilterKategori === 'Rupa Rupa' && produk.includes('fitri')) return false;
                     return true;
@@ -5374,6 +5460,7 @@
                 
                 // NORMAL FILTER: Apply semua filter termasuk bulan
                 if (cekFilterSales && !sales.includes(cekFilterSales.toLowerCase())) return false;
+                if (cekFilterTanggal && tgl !== cekFilterTanggal) return false;
                 if (cekFilterBulan && bulan !== cekFilterBulan) return false;
                 if (cekFilterKategori === 'Fitri' && !produk.includes('fitri')) return false;
                 if (cekFilterKategori === 'Rupa Rupa' && produk.includes('fitri')) return false;
@@ -5384,6 +5471,7 @@
         // renderCek untuk Tab 3 – satu tabel seperti Cek Piutang
         async function renderCek() {
             cekFilterFaktur = document.getElementById('cekFilterFaktur').value.trim();
+            cekFilterTanggal = document.getElementById('cekFilterTanggal').value;
             cekFilterSales = document.getElementById('cekFilterSales').value;
             cekFilterBulan = document.getElementById('cekFilterBulan').value;
             cekFilterKategori = document.getElementById('cekFilterKategori').value;
@@ -5512,6 +5600,7 @@
         const debouncedRenderCek = debounce(() => { cashTablePage = 1;
             renderCek(); }, 300);
         document.getElementById('cekFilterFaktur').addEventListener('input', debouncedRenderCek);
+        document.getElementById('cekFilterTanggal').addEventListener('change', debouncedRenderCek);
         document.getElementById('cekFilterSales').addEventListener('change', debouncedRenderCek);
         document.getElementById('cekFilterBulan').addEventListener('change', debouncedRenderCek);
         document.getElementById('cekFilterBulan').addEventListener('change', () => { userSetBulan.cek = true; });
@@ -5520,6 +5609,7 @@
 
         document.getElementById('cekBtnReset').addEventListener('click', () => {
             document.getElementById('cekFilterFaktur').value = '';
+            document.getElementById('cekFilterTanggal').value = '';
             document.getElementById('cekFilterSales').value = '';
             document.getElementById('cekFilterBulan').value = '';
             userSetBulan.cek = true;
@@ -5533,7 +5623,11 @@
         document.getElementById('cekBtnRefresh').addEventListener('click', function() {
             cashTablePage = 1;
             renderCek();
+            sembunyikanNotifDataBaru('cash');
             showToast('🔄 Data dimuat ulang.', 'success');
+        });
+        document.getElementById('cashDataBaruNotif').addEventListener('click', function() {
+            document.getElementById('cekBtnRefresh').click();
         });
 
         // ================================================================
@@ -5714,6 +5808,8 @@
 
         function ptGetFilteredTempo() {
             const search = document.getElementById('ptSearch').value.trim().toLowerCase();
+            const tanggalEl = document.getElementById('ptTanggal');
+            const tanggal = tanggalEl ? tanggalEl.value : '';
             const bulan = document.getElementById('ptBulan').value;
             const sales = document.getElementById('ptSales').value;
             const kategori = document.getElementById('ptKategori').value;
@@ -5724,7 +5820,8 @@
                 if (search) {
                     if (!((r.noFaktur || '').toLowerCase().includes(search) || (r.customer || '')
                             .toLowerCase().includes(search))) return false;
-                    // Jika ada search, apply sales, kategori, status tapi SKIP bulan filter
+                    // Jika ada search, apply sales, tanggal, kategori, status tapi SKIP bulan filter
+                    if (tanggal && String(r.tanggal || '') !== tanggal) return false;
                     if (sales && r.sales !== sales) return false;
                     if (kategori && r.kategori !== kategori) return false;
                     if (status === 'belum_gabungan') { 
@@ -5734,6 +5831,7 @@
                 }
                 
                 // NORMAL FILTER: Apply semua filter termasuk bulan
+                if (tanggal && String(r.tanggal || '') !== tanggal) return false;
                 if (bulan && String(r.tanggal || '').slice(0, 7) !== bulan) return false;
                 if (sales && r.sales !== sales) return false;
                 if (kategori && r.kategori !== kategori) return false;
@@ -6170,7 +6268,7 @@
         }
         const debouncedPtRender = debounce(() => { ptPage = 1;
             ptRenderTempoTable(); }, 300);
-        const ptFilterIds = ['ptSearch', 'ptBulan', 'ptSales', 'ptKategori', 'ptStatus'];
+        const ptFilterIds = ['ptSearch', 'ptTanggal', 'ptBulan', 'ptSales', 'ptKategori', 'ptStatus'];
         
         function attachPtFilterListeners() {
             ptFilterIds.forEach(id => {
@@ -6187,6 +6285,7 @@
         document.getElementById('ptBulan').addEventListener('change', () => { userSetBulan.pt = true; });
         document.getElementById('ptBtnReset').addEventListener('click', () => {
             document.getElementById('ptSearch').value = '';
+            document.getElementById('ptTanggal').value = '';
             document.getElementById('ptBulan').value = '';
             userSetBulan.pt = true;
             document.getElementById('ptSales').value = '';
@@ -6198,6 +6297,10 @@
         document.getElementById('ptBtnRefresh').addEventListener('click', async () => { 
             await loadAllCashDataBeforePtRefresh();
             await ptRefresh(true);
+            sembunyikanNotifDataBaru('piutang');
+        });
+        document.getElementById('ptDataBaruNotif').addEventListener('click', function() {
+            document.getElementById('ptBtnRefresh').click();
         });
 
         // ================================================================
@@ -7100,8 +7203,15 @@
                 await loadCashData();
                 renderPemasukan();
             }
-            if (document.getElementById('tab3').classList.contains('active')) renderCek();
-            if (document.getElementById('tab4').classList.contains('active')) await ptRefresh(false);
+            const tab3Aktif = document.getElementById('tab3').classList.contains('active');
+            const tab4Aktif = document.getElementById('tab4').classList.contains('active');
+            if (tab3Aktif) renderCek();
+            if (tab4Aktif) await ptRefresh(false);
+            // Tampilkan notifikasi "Data baru masuk" di tab yang SEDANG TIDAK dibuka,
+            // supaya saat user pindah ke tab tersebut mereka tahu ada data baru dari
+            // input manual Tab Pembayaran dan perlu klik "Muat Ulang".
+            if (!tab3Aktif) tampilkanNotifDataBaru('cash');
+            if (!tab4Aktif) tampilkanNotifDataBaru('piutang');
         }
 
         function tglExcelKeISO(str) {
@@ -8333,6 +8443,140 @@
             }
         }
 
+        // ================================================================
+        // AUTOCOMPLETE PRODUK (dropdown kustom) — dipakai di kolom "Produk"
+        // pada modal Detail Faktur (Rincian Item, bisa diedit).
+        // Ketik huruf awal nama produk -> muncul daftar produk yang namanya
+        // diawali huruf/kata tsb, tinggal klik salah satu untuk memilih.
+        // Dibuat manual (bukan hanya andalkan <datalist>) karena <datalist>
+        // tidak didukung di sebagian browser mobile (mis. Safari iOS).
+        // ================================================================
+        let _produkAcBox = null;
+        let _produkAcCurrentInput = null;
+        let _produkAcHighlightIdx = -1;
+
+        function _produkAcGetBox() {
+            if (!_produkAcBox) {
+                _produkAcBox = document.createElement('div');
+                _produkAcBox.id = 'produkAutocompleteBox';
+                _produkAcBox.style.cssText =
+                    'position:absolute;z-index:99999;background:#fff;border:1px solid #cbd5e1;' +
+                    'border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.18);max-height:220px;' +
+                    'overflow-y:auto;font-size:11px;display:none;';
+                document.body.appendChild(_produkAcBox);
+            }
+            return _produkAcBox;
+        }
+
+        function _produkAcHide() {
+            const box = _produkAcGetBox();
+            box.style.display = 'none';
+            box.innerHTML = '';
+            _produkAcCurrentInput = null;
+            _produkAcHighlightIdx = -1;
+        }
+
+        function _produkAcRenderHighlight() {
+            const box = _produkAcGetBox();
+            Array.from(box.children).forEach((el, i) => {
+                el.style.background = (i === _produkAcHighlightIdx) ? '#eff6ff' : '#fff';
+            });
+        }
+
+        // Gabungkan nama produk dari Master Produk & Harga (Tab 8) dengan nama
+        // produk yang sudah pernah muncul di Bank Data Penjualan, supaya daftar
+        // saran tetap lengkap walau Master Produk belum diisi semua.
+        function _produkAcDaftarNama() {
+            const set = new Set();
+            loadProdukHargaMaster().forEach(p => { const nm = (p.produk || '').trim();
+                if (nm) set.add(nm); });
+            if (typeof salesData !== 'undefined' && Array.isArray(salesData)) {
+                salesData.forEach(r => { const nm = (r.Produk || '').trim();
+                    if (nm) set.add(nm); });
+            }
+            return Array.from(set);
+        }
+
+        function _produkAcShow(inputEl) {
+            const q = inputEl.value.trim().toLowerCase();
+            if (!q) { _produkAcHide(); return; }
+            const semua = _produkAcDaftarNama();
+            // Utamakan produk yang namanya DIAWALI huruf/teks yang diketik
+            // (mis. ketik "f" -> semua produk berawalan F).
+            let matches = semua.filter(nm => nm.toLowerCase().startsWith(q));
+            if (matches.length === 0) {
+                // fallback: cari juga di tengah nama (mis. ketik "botol")
+                matches = semua.filter(nm => nm.toLowerCase().includes(q));
+            }
+            matches = matches.sort((a, b) => a.localeCompare(b)).slice(0, 20);
+
+            const box = _produkAcGetBox();
+            if (matches.length === 0) { _produkAcHide(); return; }
+
+            box.innerHTML = matches.map(nm =>
+                `<div class="produk-ac-item" style="padding:5px 10px;cursor:pointer;white-space:nowrap;" data-nama="${escapeHtml(nm)}">${escapeHtml(nm)}</div>`
+            ).join('');
+
+            const rect = inputEl.getBoundingClientRect();
+            box.style.left = (rect.left + window.scrollX) + 'px';
+            box.style.top = (rect.bottom + window.scrollY + 2) + 'px';
+            box.style.width = Math.max(rect.width, 160) + 'px';
+            box.style.display = 'block';
+            _produkAcCurrentInput = inputEl;
+            _produkAcHighlightIdx = -1;
+
+            box.querySelectorAll('.produk-ac-item').forEach(item => {
+                item.addEventListener('mouseenter', () => {
+                    _produkAcHighlightIdx = Array.from(box.children).indexOf(item);
+                    _produkAcRenderHighlight();
+                });
+                // Pakai 'mousedown' (bukan 'click') supaya pilihan terdaftar
+                // SEBELUM input kehilangan fokus (blur), jadi tidak "hilang".
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    inputEl.value = item.dataset.nama;
+                    _produkAcHide();
+                    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    inputEl.focus();
+                });
+            });
+        }
+
+        function setupProdukAutocomplete(inputEl) {
+            if (!inputEl || inputEl._produkAcBound) return;
+            inputEl._produkAcBound = true;
+            inputEl.setAttribute('autocomplete', 'off');
+            inputEl.addEventListener('input', () => _produkAcShow(inputEl));
+            inputEl.addEventListener('focus', () => { if (inputEl.value.trim()) _produkAcShow(inputEl); });
+            inputEl.addEventListener('keydown', (e) => {
+                const box = _produkAcGetBox();
+                if (box.style.display !== 'block' || _produkAcCurrentInput !== inputEl) return;
+                const items = Array.from(box.children);
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    _produkAcHighlightIdx = Math.min(_produkAcHighlightIdx + 1, items.length - 1);
+                    _produkAcRenderHighlight();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    _produkAcHighlightIdx = Math.max(_produkAcHighlightIdx - 1, 0);
+                    _produkAcRenderHighlight();
+                } else if (e.key === 'Enter') {
+                    if (_produkAcHighlightIdx >= 0 && items[_produkAcHighlightIdx]) {
+                        e.preventDefault();
+                        items[_produkAcHighlightIdx].dispatchEvent(new Event('mousedown'));
+                    }
+                } else if (e.key === 'Escape') {
+                    _produkAcHide();
+                }
+            });
+            inputEl.addEventListener('blur', () => {
+                // beri jeda supaya event 'mousedown' pada item sempat jalan duluan
+                setTimeout(() => { if (_produkAcCurrentInput === inputEl) _produkAcHide(); }, 150);
+            });
+        }
+        document.addEventListener('scroll', () => _produkAcHide(), true);
+        window.addEventListener('resize', () => _produkAcHide());
+
         function tab1BindEditFakturModalEvents() {
             const table = document.getElementById('tab1EditFakturTable');
             if (table) {
@@ -8344,6 +8588,7 @@
                     // dari daftar, harga beli & harga jual otomatis terisi kalau produk dikenali.
                     const produkInp = tr.querySelector('.tab1e-produk');
                     if (produkInp) {
+                        setupProdukAutocomplete(produkInp);
                         produkInp.addEventListener('change', function() {
                             const h = cariHargaProdukMaster(this.value);
                             if (!h) return;
@@ -8515,15 +8760,6 @@
                     <div style="font-size:11px; line-height:1.8;">
                         <div><strong>💰 Profit versi Rekap Profit (dari Data Uang Masuk):</strong> ${fmtRp(item.profit)}</div>
                         ${Math.abs((item.profit||0) - totalProfit) > 0.5 ? `<div style="color:#b91c1c;">⚠️ Beda dengan total di atas (kemungkinan sebagian baris produk tidak ketemu di Bank Data Penjualan).</div>` : ''}
-                    </div>
-                    <hr style="margin:8px 0; border:none; border-top:1px solid var(--line);">
-                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
-                        <div style="flex:1; min-width:180px; padding:8px 12px; background:var(--grey-bg); border:1px solid var(--line); border-radius:var(--radius); text-align:center;">
-                            <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">📊 Margin Rata-rata</div>
-                            <div style="font-size:16px; font-weight:700; color:var(--blue);">
-                                ${totalJual > 0 ? ((item.profit || 0) / totalJual * 100).toFixed(2) : '0.00'}%
-                            </div>
-                        </div>
                     </div>
                 `;
             document.getElementById('detailModalGlobal').classList.add('show');
