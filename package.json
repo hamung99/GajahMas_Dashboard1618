@@ -1,18 +1,18 @@
 {
-  "name": "gajahmas-2026",
+  "name": "gajah-mas-2026-backend",
   "version": "1.0.0",
-  "description": "GAJAH MAS 2026 - All in One (versi server, data tersinkron semua perangkat)",
+  "description": "Backend API untuk GAJAH MAS 2026 (Dashboard Kerja/Laporan/Data) - tanpa login",
   "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {
-    "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.3.0"
-  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
   }
 }
