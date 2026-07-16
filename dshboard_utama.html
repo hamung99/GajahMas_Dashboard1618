@@ -197,84 +197,13 @@
 
 <footer class="footer-site">GAJAH MAS 2026 by hamung</footer>
 
-<!-- Auth overlay (tetap sama) -->
-<div id="authOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(31,78,120,0.92); align-items:center; justify-content:center; font-family:inherit;">
-    <form id="authForm" onsubmit="handleAuthSubmit(event)" style="background:#fff; border-radius:12px; padding:32px 28px; width:90%; max-width:360px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
-        <input type="hidden" id="authMode" value="login">
-        <h2 id="authTitle" style="margin:0 0 6px; color:#1f4e78; font-size:20px;">🔒 Masuk ke GAJAH MAS 2026</h2>
-        <p style="margin:0 0 18px; color:#555; font-size:13px;">Login diperlukan supaya data hanya bisa diakses oleh tim kamu.</p>
-        <label style="display:block; font-size:13px; margin-bottom:4px; color:#333;">Username</label>
-        <input id="authUsername" type="text" autocomplete="username" required style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <label style="display:block; font-size:13px; margin-bottom:4px; color:#333;">Password</label>
-        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" style="width:100%; padding:10px; margin-bottom:16px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <button id="authSubmitBtn" type="submit" style="width:100%; padding:11px; background:#1f4e78; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Masuk</button>
-        <div id="authMsg" style="margin-top:12px; font-size:13px; min-height:16px;"></div>
-    </form>
-</div>
-
 <script>
-    function showLoginOverlay(message) {
-        const el = document.getElementById('authOverlay');
-        if (el) {
-            el.style.display = 'flex';
-            if (message) document.getElementById('authMsg').textContent = message;
-        }
-    }
-
-    function showHub() {
-        document.getElementById('authOverlay').style.display = 'none';
-    }
-
-    // ================================================================
-    // KONFIGURASI BACKEND (Railway / server API terpisah)
-    // Kalau halaman ini di-host di domain lain dari backend (mis. GitHub
-    // Pages + backend di Railway), isi URL backend di sini, contoh:
-    // 'https://nama-app-kamu.up.railway.app'
-    // Kalau frontend & backend satu domain/origin yang sama, biarkan '' saja.
-    // ================================================================
-    const API_BASE = '';
-    function apiUrl(path) {
-        return API_BASE ? API_BASE.replace(/\/$/, '') + path : path;
-    }
-
-    // SEMENTARA: cek login dinonaktifkan untuk preview
-    (async function bootstrap() {
-        showHub();
-        return;
-        // ... kode asli jika ingin diaktifkan
-    })();
-
-    document.getElementById('btnLogoutHeader').addEventListener('click', async function() {
-        if (!confirm('Yakin mau logout dari GAJAH MAS 2026?')) return;
-        try {
-            await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: API_BASE ? 'include' : 'same-origin' });
-        } catch (e) { /* tetap lanjut reload */ }
+    // Login dihapus — halaman ini langsung terbuka tanpa proteksi.
+    // Tombol logout dibiarkan ada tapi cuma reload halaman (tidak ada session lagi).
+    document.getElementById('btnLogoutHeader').addEventListener('click', function() {
+        if (!confirm('Muat ulang halaman?')) return;
         location.reload();
     });
-
-    async function handleAuthSubmit(e) {
-        e.preventDefault();
-        const mode = document.getElementById('authMode').value;
-        const username = document.getElementById('authUsername').value.trim();
-        const password = document.getElementById('authPassword').value;
-        const msgEl = document.getElementById('authMsg');
-        msgEl.style.color = '#991b1b';
-        msgEl.textContent = '';
-        if (!username || !password) { msgEl.textContent = 'Isi username dan password.'; return; }
-        try {
-            const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-            const opts = { credentials: API_BASE ? 'include' : 'same-origin', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) };
-            const res = await fetch(apiUrl(url), opts);
-            if (!res.ok) {
-                let msg = 'Server error (' + res.status + ')';
-                try { const j = await res.json(); if (j.error) msg = j.error; } catch (er) {}
-                throw new Error(msg);
-            }
-            showHub();
-        } catch (err) {
-            msgEl.textContent = '❌ ' + err.message;
-        }
-    }
 </script>
 
 </body>
