@@ -4020,7 +4020,7 @@
         // contoh: 'https://nama-app-kamu.up.railway.app'
         // Kalau frontend & backend satu domain/origin yang sama, biarkan '' saja.
         // ================================================================
-        const API_BASE = '';
+        const API_BASE = 'https://gajahmasdashboard1618-production.up.railway.app';
         function apiUrl(path) {
             return API_BASE ? API_BASE.replace(/\/$/, '') + path : path;
         }
@@ -10054,23 +10054,8 @@
         // AUTH BOOTSTRAP — cek status login dulu sebelum memuat data apa pun.
         // ================================================================
         (async function bootstrap() {
-            try {
-                const status = await fetch(apiUrl('/api/auth/status'), { credentials: API_BASE ? 'include' : 'same-origin' }).then(r => r.json());
-                if (status.setupNeeded) {
-                    document.getElementById('authTitle').textContent = '🔧 Setup Akun Admin Pertama';
-                    document.getElementById('authSubmitBtn').textContent = 'Buat Akun & Masuk';
-                    document.getElementById('authMode').value = 'register';
-                    document.getElementById('authOverlay').style.display = 'flex';
-                } else if (!status.loggedIn) {
-                    document.getElementById('authOverlay').style.display = 'flex';
-                } else {
-                    startApp();
-                }
-            } catch (e) {
-                console.error('Gagal cek status auth:', e);
-                document.getElementById('authMsg').textContent = 'Tidak bisa menghubungi server. Pastikan server backend berjalan.';
-                document.getElementById('authOverlay').style.display = 'flex';
-            }
+            // Login dihapus — langsung buka aplikasi tanpa cek status auth.
+            startApp();
         })();
 
         // ================================================================
