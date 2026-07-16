@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAJAH MAS 2026</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+    }
+    html, body {
+        height: 100%;
+    }
+    body {
+        background: #f1f5f9;
+        color: #1e293b;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    .app-header {
+        background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+        color: #fff;
+        padding: 10px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        flex-shrink: 0;
+    }
+    .app-header h1 {
+        font-size: 18px;
+        font-weight: 700;
+    }
+    .app-header .sub {
+        font-size: 11px;
+        opacity: 0.75;
+        margin-left: 8px;
+    }
+    #btnLogoutHeader {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    #btnLogoutHeader:hover { background: rgba(255,255,255,0.16); }
+
+    .hub-wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 48px 20px 20px;
+        text-align: center;
+        flex: 1;  /* mendorong footer ke bawah */
+        width: 100%;
+    }
+    .kartu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 22px;
+        text-align: left;
+    }
+    .kartu {
+        position: relative;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e7ecf3;
+        border-radius: 16px;
+        padding: 28px 20px 24px;
+        text-align: center;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow:
+            0 1px 0 rgba(255,255,255,0.8) inset,
+            0 1px 2px rgba(15,23,42,0.04),
+            0 10px 22px rgba(15,23,42,0.08),
+            0 2px 6px rgba(15,23,42,0.05);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .kartu::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--aksen-1), var(--aksen-2));
+    }
+    .kartu:hover {
+        box-shadow:
+            0 1px 0 rgba(255,255,255,0.8) inset,
+            0 2px 4px rgba(15,23,42,0.05),
+            0 18px 32px rgba(15,23,42,0.12),
+            0 4px 10px rgba(15,23,42,0.06);
+        transform: translateY(-4px);
+    }
+    .kartu.kerja { --aksen-1: #2563eb; --aksen-2: #60a5fa; }
+    .kartu.laporan { --aksen-1: #16a34a; --aksen-2: #6ee7a0; }
+    .kartu.data { --aksen-1: #7c3aed; --aksen-2: #c4b5fd; }
+    .kartu .ikon-wrap {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 14px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        background: linear-gradient(160deg, var(--aksen-2) 0%, var(--aksen-1) 100%);
+        box-shadow:
+            0 1px 0 rgba(255,255,255,0.5) inset,
+            0 6px 14px rgba(15,23,42,0.18);
+    }
+    .kartu .judul-kartu {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1a202c;
+    }
+    .kartu .desc-kartu {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 6px;
+        line-height: 1.5;
+        flex: 1;
+    }
+    .kartu .buka-btn {
+        display: inline-block;
+        margin-top: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 18px;
+        background: linear-gradient(180deg, var(--aksen-2) 0%, var(--aksen-1) 100%);
+        box-shadow: 0 4px 10px rgba(15,23,42,0.18), 0 1px 0 rgba(255,255,255,0.4) inset;
+        align-self: center;
+        margin-top: auto;
+    }
+
+    /* Footer terpisah di luar .hub-wrap */
+    .footer-site {
+        flex-shrink: 0;
+        text-align: center;
+        padding: 16px 20px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #94a3b8;
+        font-size: 13px;
+        letter-spacing: 0.3px;
+        margin-top: 20px;  /* jarak opsional dari konten di atas */
+    }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <div>
+        <h1>📊 GAJAH MAS 2026</h1>
+        <span class="sub">All-in-One</span>
+    </div>
+    <button id="btnLogoutHeader" type="button" title="Keluar dari akun">🚪 Logout</button>
+</header>
+
+<div class="hub-wrap">
+    <!-- Judul "Pilih dashboard" dan subjudul telah dihapus -->
+
+    <div class="kartu-grid">
+        <a class="kartu kerja" href="dashboard-kerja.html">
+            <span class="ikon-wrap">🧾</span>
+            <div class="judul-kartu">Dashboard Kerja</div>
+            <span class="buka-btn">Buka →</span>
+        </a>
+        <a class="kartu laporan" href="dashboard-laporan.html">
+            <span class="ikon-wrap">📈</span>
+            <div class="judul-kartu">Dashboard Laporan</div>
+            <span class="buka-btn">Buka →</span>
+        </a>
+        <a class="kartu data" href="dashboard-data.html">
+            <span class="ikon-wrap">🗄️</span>
+            <div class="judul-kartu">Dashboard Data</div>
+            <span class="buka-btn">Buka →</span>
+        </a>
+    </div>
+</div>
+
+<footer class="footer-site">GAJAH MAS 2026 by hamung</footer>
+
+<!-- Auth overlay (tetap sama) -->
+<div id="authOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(31,78,120,0.92); align-items:center; justify-content:center; font-family:inherit;">
+    <form id="authForm" onsubmit="handleAuthSubmit(event)" style="background:#fff; border-radius:12px; padding:32px 28px; width:90%; max-width:360px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <input type="hidden" id="authMode" value="login">
+        <h2 id="authTitle" style="margin:0 0 6px; color:#1f4e78; font-size:20px;">🔒 Masuk ke GAJAH MAS 2026</h2>
+        <p style="margin:0 0 18px; color:#555; font-size:13px;">Login diperlukan supaya data hanya bisa diakses oleh tim kamu.</p>
+        <label style="display:block; font-size:13px; margin-bottom:4px; color:#333;">Username</label>
+        <input id="authUsername" type="text" autocomplete="username" required style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <label style="display:block; font-size:13px; margin-bottom:4px; color:#333;">Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" style="width:100%; padding:10px; margin-bottom:16px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <button id="authSubmitBtn" type="submit" style="width:100%; padding:11px; background:#1f4e78; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Masuk</button>
+        <div id="authMsg" style="margin-top:12px; font-size:13px; min-height:16px;"></div>
+    </form>
+</div>
+
+<script>
+    function showLoginOverlay(message) {
+        const el = document.getElementById('authOverlay');
+        if (el) {
+            el.style.display = 'flex';
+            if (message) document.getElementById('authMsg').textContent = message;
+        }
+    }
+
+    function showHub() {
+        document.getElementById('authOverlay').style.display = 'none';
+    }
+
+    // ================================================================
+    // KONFIGURASI BACKEND (Railway / server API terpisah)
+    // Kalau halaman ini di-host di domain lain dari backend (mis. GitHub
+    // Pages + backend di Railway), isi URL backend di sini, contoh:
+    // 'https://nama-app-kamu.up.railway.app'
+    // Kalau frontend & backend satu domain/origin yang sama, biarkan '' saja.
+    // ================================================================
+    const API_BASE = '';
+    function apiUrl(path) {
+        return API_BASE ? API_BASE.replace(/\/$/, '') + path : path;
+    }
+
+    // SEMENTARA: cek login dinonaktifkan untuk preview
+    (async function bootstrap() {
+        showHub();
+        return;
+        // ... kode asli jika ingin diaktifkan
+    })();
+
+    document.getElementById('btnLogoutHeader').addEventListener('click', async function() {
+        if (!confirm('Yakin mau logout dari GAJAH MAS 2026?')) return;
+        try {
+            await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: API_BASE ? 'include' : 'same-origin' });
+        } catch (e) { /* tetap lanjut reload */ }
+        location.reload();
+    });
+
+    async function handleAuthSubmit(e) {
+        e.preventDefault();
+        const mode = document.getElementById('authMode').value;
+        const username = document.getElementById('authUsername').value.trim();
+        const password = document.getElementById('authPassword').value;
+        const msgEl = document.getElementById('authMsg');
+        msgEl.style.color = '#991b1b';
+        msgEl.textContent = '';
+        if (!username || !password) { msgEl.textContent = 'Isi username dan password.'; return; }
+        try {
+            const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+            const opts = { credentials: API_BASE ? 'include' : 'same-origin', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) };
+            const res = await fetch(apiUrl(url), opts);
+            if (!res.ok) {
+                let msg = 'Server error (' + res.status + ')';
+                try { const j = await res.json(); if (j.error) msg = j.error; } catch (er) {}
+                throw new Error(msg);
+            }
+            showHub();
+        } catch (err) {
+            msgEl.textContent = '❌ ' + err.message;
+        }
+    }
+</script>
+
+</body>
+</html>
